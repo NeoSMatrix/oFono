@@ -1,6 +1,9 @@
 
 AM_MAKEFLAGS = --no-print-directory
 
+gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
+					gdbus/object.c gdbus/polkit.c
+
 builtin_modules =
 builtin_sources =
 builtin_cflags =
@@ -8,11 +11,11 @@ builtin_libadd =
 
 libexec_PROGRAMS = src/mmsd
 
-src_mmsd_SOURCES = $(builtin_sources) \
+src_mmsd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/main.c src/mms.h \
 			src/log.h src/log.c src/plugin.h src/plugin.c
 
-src_mmsd_LDADD = $(builtin_libadd) @GLIB_LIBS@ -ldl
+src_mmsd_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 
 src_mmsd_LDFLAGS = -Wl,--export-dynamic
 
@@ -25,7 +28,7 @@ src/plugin.$(OBJEXT): src/builtin.h
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
-AM_CFLAGS = @GLIB_CFLAGS@ $(builtin_cflags) \
+AM_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(builtin_cflags) \
 					-DMMS_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(plugindir)"\"
 
