@@ -19,7 +19,13 @@
  *
  */
 
+#include <dbus/dbus.h>
 #include <glib.h>
+
+#define MMS_SERVICE	"org.ofono.mms"
+#define MMS_PATH	"/org/ofono/mms"
+
+#define MMS_ERROR_INTERFACE	MMS_SERVICE ".Error"
 
 #include "log.h"
 

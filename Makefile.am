@@ -32,7 +32,7 @@ AM_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(builtin_cflags) \
 					-DMMS_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(plugindir)"\"
 
-INCLUDES = -I$(builddir)/src -I$(srcdir)/src
+INCLUDES = -I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/gdbus
 
 CLEANFILES = src/builtin.h
 

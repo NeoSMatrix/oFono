@@ -29,6 +29,8 @@
 #include <string.h>
 #include <signal.h>
 
+#include <gdbus.h>
+
 #include "mms.h"
 
 static GMainLoop *main_loop = NULL;
@@ -43,6 +45,13 @@ static void sig_term(int sig)
 	__terminated = 1;
 
 	mms_info("Terminating");
+
+	g_main_loop_quit(main_loop);
+}
+
+static void disconnect_callback(DBusConnection *conn, void *user_data)
+{
+	mms_error("D-Bus disconnect");
 
 	g_main_loop_quit(main_loop);
 }
@@ -78,6 +87,8 @@ int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *error = NULL;
+	DBusConnection *conn;
+	DBusError err;
 	struct sigaction sa;
 
 	context = g_option_context_new(NULL);
@@ -108,6 +119,20 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
+	dbus_error_init(&err);
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, MMS_SERVICE, &err);
+	if (conn == NULL) {
+		if (dbus_error_is_set(&err) == TRUE) {
+			fprintf(stderr, "%s\n", err.message);
+			dbus_error_free(&err);
+		} else
+			fprintf(stderr, "Can't register with session bus\n");
+		exit(1);
+	}
+
+	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
+
 	__mms_log_init(option_debug, option_detach);
 
 	__mms_plugin_init();
@@ -122,6 +147,8 @@ int main(int argc, char *argv[])
 	__mms_plugin_cleanup();
 
 	__mms_log_cleanup();
+
+	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
 
