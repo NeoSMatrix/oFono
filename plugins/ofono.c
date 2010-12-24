@@ -30,6 +30,7 @@
 
 #include "plugin.h"
 #include "log.h"
+#include "push.h"
 
 #define OFONO_SERVICE		"org.ofono"
 
@@ -79,6 +80,8 @@ static DBusMessage *agent_receive(DBusConnection *conn,
 	dbus_message_iter_get_fixed_array(&array, &data, &data_len);
 
 	DBG("notification with %d bytes", data_len);
+
+	mms_push_notify(data, data_len);
 
 done:
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
