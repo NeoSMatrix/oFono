@@ -9,6 +9,9 @@ builtin_sources =
 builtin_cflags =
 builtin_libadd =
 
+builtin_modules += ofono
+builtin_sources += plugins/ofono.c
+
 libexec_PROGRAMS = src/mmsd
 
 src_mmsd_SOURCES = $(gdbus_sources) $(builtin_sources) \
