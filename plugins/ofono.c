@@ -36,15 +36,86 @@
 #define OFONO_MANAGER_INTERFACE	OFONO_SERVICE ".Manager"
 #define OFONO_MODEM_INTERFACE	OFONO_SERVICE ".Modem"
 #define OFONO_PUSH_INTERFACE	OFONO_SERVICE ".PushNotification"
+#define OFONO_AGENT_INTERFACE	OFONO_SERVICE ".PushNotificationAgent"
 
 struct modem_data {
 	char *path;
+	DBusConnection *conn;
 	gboolean has_push;
+	gboolean has_agent;
 };
 
 static GHashTable *modem_list;
 
 static gboolean ofono_running = FALSE;
+
+static void remove_agent(struct modem_data *modem)
+{
+	DBG("path %s", modem->path);
+
+	if (g_dbus_unregister_interface(modem->conn, modem->path,
+					OFONO_AGENT_INTERFACE) == FALSE) {
+		mms_error("Failed to unregister notification agent");
+		return;
+	}
+
+	modem->has_agent = FALSE;
+}
+
+static DBusMessage *agent_receive(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessageIter iter, array;
+	unsigned char *data;
+	int data_len;
+
+	DBG("path %s", modem->path);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &data, &data_len);
+
+	DBG("notification with %d bytes", data_len);
+
+done:
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *agent_release(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct modem_data *modem = user_data;
+
+	DBG("path %s", modem->path);
+
+	remove_agent(modem);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable agent_methods[] = {
+	{ "ReceiveNotification", "aya{sv}", "", agent_receive },
+	{ "Release",             "",        "", agent_release },
+	{ }
+};
+
+static void create_agent(struct modem_data *modem)
+{
+	DBG("path %s", modem->path);
+
+	if (g_dbus_register_interface(modem->conn, modem->path,
+						OFONO_AGENT_INTERFACE,
+						agent_methods, NULL, NULL,
+						modem, NULL) == FALSE) {
+		mms_error("Failed to register notification agent");
+		return;
+	}
+
+	modem->has_agent = TRUE;
+}
 
 static void remove_modem(gpointer data)
 {
@@ -52,8 +123,68 @@ static void remove_modem(gpointer data)
 
 	DBG("path %s", modem->path);
 
+	if (modem->has_agent == TRUE)
+		remove_agent(modem);
+
+	dbus_connection_unref(modem->conn);
+
 	g_free(modem->path);
 	g_free(modem);
+}
+
+static void register_agent_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	DBG("path %s", modem->path);
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE) {
+		dbus_error_free(&err);
+		remove_agent(modem);
+		goto done;
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int register_agent(struct modem_data *modem)
+{
+	DBusConnection *conn = modem->conn;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	DBG("path %s", modem->path);
+
+	msg = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+					OFONO_PUSH_INTERFACE, "RegisterAgent");
+	if (msg == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &modem->path,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL)
+		return -EINVAL;
+
+	dbus_pending_call_set_notify(call, register_agent_reply, modem, NULL);
+
+	dbus_pending_call_unref(call);
+
+	return 0;
 }
 
 static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
@@ -80,6 +211,14 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 	modem->has_push = has_push;
 
 	DBG("path %s push notification %d", modem->path, modem->has_push);
+
+	if (modem->has_push == TRUE && modem->has_agent == FALSE) {
+		create_agent(modem);
+		register_agent(modem);
+	}
+
+	if (modem->has_push == FALSE && modem->has_agent == TRUE)
+		remove_agent(modem);
 }
 
 static void create_modem(DBusConnection *conn,
@@ -93,7 +232,10 @@ static void create_modem(DBusConnection *conn,
 		return;
 
 	modem->path = g_strdup(path);
+	modem->conn = dbus_connection_ref(conn);
+
 	modem->has_push = FALSE;
+	modem->has_agent = FALSE;
 
 	DBG("path %s", modem->path);
 
@@ -116,7 +258,6 @@ static void create_modem(DBusConnection *conn,
 
 		dbus_message_iter_next(&dict);
 	}
-
 }
 
 static guint modem_added_watch;
