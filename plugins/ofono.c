@@ -30,7 +30,7 @@
 
 #include "plugin.h"
 #include "log.h"
-#include "push.h"
+#include "service.h"
 
 #define OFONO_SERVICE		"org.ofono"
 
@@ -44,6 +44,7 @@ struct modem_data {
 	DBusConnection *conn;
 	gboolean has_push;
 	gboolean has_agent;
+	struct mms_service *service;
 };
 
 static GHashTable *modem_list;
@@ -81,7 +82,7 @@ static DBusMessage *agent_receive(DBusConnection *conn,
 
 	DBG("notification with %d bytes", data_len);
 
-	mms_push_notify(data, data_len);
+	mms_service_push_notify(modem->service, data, data_len);
 
 done:
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -125,6 +126,8 @@ static void remove_modem(gpointer data)
 	struct modem_data *modem = data;
 
 	DBG("path %s", modem->path);
+
+	mms_service_unref(modem->service);
 
 	if (modem->has_agent == TRUE)
 		remove_agent(modem);
@@ -239,6 +242,8 @@ static void create_modem(DBusConnection *conn,
 
 	modem->has_push = FALSE;
 	modem->has_agent = FALSE;
+
+	modem->service = mms_service_create();
 
 	DBG("path %s", modem->path);
 
