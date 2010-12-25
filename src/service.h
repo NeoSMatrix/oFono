@@ -19,24 +19,11 @@
  *
  */
 
-#include <dbus/dbus.h>
-#include <glib.h>
+struct mms_service;
 
-#define MMS_SERVICE	"org.ofono.mms"
-#define MMS_PATH	"/org/ofono/mms"
+struct mms_service *mms_service_create(void);
+struct mms_service *mms_service_ref(struct mms_service *service);
+void mms_service_unref(struct mms_service *service);
 
-#define MMS_ERROR_INTERFACE	MMS_SERVICE ".Error"
-
-#include "log.h"
-
-int __mms_log_init(const char *debug, gboolean detach);
-void __mms_log_cleanup(void);
-
-#include "plugin.h"
-
-int __mms_plugin_init(void);
-void __mms_plugin_cleanup(void);
-
-#include "service.h"
-
-#include "push.h"
+void mms_service_push_notify(struct mms_service *service,
+					unsigned char *data, int len);
