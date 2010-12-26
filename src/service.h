@@ -25,5 +25,11 @@ struct mms_service *mms_service_create(void);
 struct mms_service *mms_service_ref(struct mms_service *service);
 void mms_service_unref(struct mms_service *service);
 
+int mms_service_register(struct mms_service *service);
+int mms_service_unregister(struct mms_service *service);
+
+int mms_service_set_identity(struct mms_service *service,
+					const char *identity);
+
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len);

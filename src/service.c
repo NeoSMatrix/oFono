@@ -23,12 +23,14 @@
 #include <config.h>
 #endif
 
-#include <ctype.h>
+#include <errno.h>
 
 #include "mms.h"
 
 struct mms_service {
 	gint refcount;
+	gboolean registered;
+	char *identity;
 };
 
 struct mms_service *mms_service_create(void)
@@ -66,7 +68,52 @@ void mms_service_unref(struct mms_service *service)
 
 	DBG("service %p", service);
 
+	g_free(service->identity);
 	g_free(service);
+}
+
+int mms_service_register(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	if (service->identity == NULL)
+		return -EINVAL;
+
+	service->registered = TRUE;
+
+	return 0;
+}
+
+int mms_service_unregister(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	service->registered = FALSE;
+
+	return 0;
+}
+
+int mms_service_set_identity(struct mms_service *service,
+					const char *identity)
+{
+	DBG("service %p identity %s", service, identity);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	if (service->registered == TRUE)
+		return -EBUSY;
+
+	g_free(service->identity);
+	service->identity = g_strdup(identity);
+
+	return 0;
 }
 
 void mms_service_push_notify(struct mms_service *service,
