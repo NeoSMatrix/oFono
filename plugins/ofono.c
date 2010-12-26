@@ -36,15 +36,19 @@
 
 #define OFONO_MANAGER_INTERFACE	OFONO_SERVICE ".Manager"
 #define OFONO_MODEM_INTERFACE	OFONO_SERVICE ".Modem"
+#define OFONO_SIM_INTERFACE	OFONO_SERVICE ".SimManager"
 #define OFONO_PUSH_INTERFACE	OFONO_SERVICE ".PushNotification"
 #define OFONO_AGENT_INTERFACE	OFONO_SERVICE ".PushNotificationAgent"
 
 struct modem_data {
 	char *path;
 	DBusConnection *conn;
+	gboolean has_sim;
 	gboolean has_push;
 	gboolean has_agent;
 	struct mms_service *service;
+	dbus_bool_t sim_present;
+	char *sim_identity;
 };
 
 static GHashTable *modem_list;
@@ -127,12 +131,17 @@ static void remove_modem(gpointer data)
 
 	DBG("path %s", modem->path);
 
+	if (modem->sim_present == TRUE && modem->sim_identity != NULL)
+		mms_service_unregister(modem->service);
+
 	mms_service_unref(modem->service);
 
 	if (modem->has_agent == TRUE)
 		remove_agent(modem);
 
 	dbus_connection_unref(modem->conn);
+
+	g_free(modem->sim_identity);
 
 	g_free(modem->path);
 	g_free(modem);
@@ -193,9 +202,156 @@ static int register_agent(struct modem_data *modem)
 	return 0;
 }
 
+static void check_sim_present(struct modem_data *modem, DBusMessageIter *iter)
+{
+	dbus_bool_t present;
+
+	dbus_message_iter_get_basic(iter, &present);
+
+	if (modem->sim_present == present)
+		return;
+
+	modem->sim_present = present;
+
+	if (modem->sim_identity == NULL)
+		return;
+
+	if (modem->sim_present == FALSE) {
+		mms_service_unregister(modem->service);
+
+		g_free(modem->sim_identity);
+		modem->sim_identity = NULL;
+	} else
+		mms_service_register(modem->service);
+}
+
+static void check_sim_identity(struct modem_data *modem, DBusMessageIter *iter)
+{
+	const char *identity;
+
+	dbus_message_iter_get_basic(iter, &identity);
+
+	g_free(modem->sim_identity);
+	modem->sim_identity = g_strdup(identity);
+
+	if (modem->sim_identity == NULL)
+		return;
+
+	mms_service_set_identity(modem->service, modem->sim_identity);
+
+	if (modem->sim_present == TRUE)
+		mms_service_register(modem->service);
+}
+
+static gboolean sim_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *path, *key;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	path = dbus_message_get_path(message);
+
+	modem = g_hash_table_lookup(modem_list, path);
+	if (modem == NULL)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Present") == TRUE)
+		check_sim_present(modem, &value);
+	if (g_str_equal(key, "SubscriberIdentity") == TRUE)
+		check_sim_identity(modem, &value);
+
+	return TRUE;
+}
+
+static void get_sim_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessageIter iter, dict;
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE) {
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, "a{sv}") == FALSE)
+		goto done;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Present") == TRUE)
+			check_sim_present(modem, &value);
+		else if (g_str_equal(key, "SubscriberIdentity") == TRUE)
+			check_sim_identity(modem, &value);
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int get_sim_properties(struct modem_data *modem)
+{
+	DBusConnection *conn = modem->conn;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+					OFONO_SIM_INTERFACE, "GetProperties");
+	if (msg == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL)
+		return -EINVAL;
+
+	dbus_pending_call_set_notify(call, get_sim_properties_reply,
+							modem, NULL);
+
+	dbus_pending_call_unref(call);
+
+	return 0;
+}
+
 static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 {
 	DBusMessageIter entry;
+	gboolean has_sim = FALSE;
 	gboolean has_push = FALSE;
 
 	dbus_message_iter_recurse(iter, &entry);
@@ -205,26 +361,43 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 
 		dbus_message_iter_get_basic(&entry, &interface);
 
-		if (g_str_equal(interface, OFONO_PUSH_INTERFACE) == TRUE)
+		if (g_str_equal(interface, OFONO_SIM_INTERFACE) == TRUE)
+			has_sim = TRUE;
+		else if (g_str_equal(interface, OFONO_PUSH_INTERFACE) == TRUE)
 			has_push = TRUE;
 
 		dbus_message_iter_next(&entry);
 	}
 
-	if (modem->has_push == has_push)
-		return;
+	if (modem->has_sim != has_sim) {
+		modem->has_sim = has_sim;
 
-	modem->has_push = has_push;
+		DBG("path %s sim %d", modem->path, modem->has_sim);
 
-	DBG("path %s push notification %d", modem->path, modem->has_push);
+		if (modem->has_sim == FALSE) {
+			mms_service_unregister(modem->service);
 
-	if (modem->has_push == TRUE && modem->has_agent == FALSE) {
-		create_agent(modem);
-		register_agent(modem);
+			g_free(modem->sim_identity);
+			modem->sim_identity = NULL;
+
+			modem->sim_present = FALSE;
+		} else
+			get_sim_properties(modem);
 	}
 
-	if (modem->has_push == FALSE && modem->has_agent == TRUE)
-		remove_agent(modem);
+	if (modem->has_push != has_push) {
+		modem->has_push = has_push;
+
+		DBG("path %s push %d", modem->path, modem->has_push);
+
+		if (modem->has_push == TRUE && modem->has_agent == FALSE) {
+			create_agent(modem);
+			register_agent(modem);
+		}
+
+		if (modem->has_push == FALSE && modem->has_agent == TRUE)
+			remove_agent(modem);
+	}
 }
 
 static void create_modem(DBusConnection *conn,
@@ -240,6 +413,7 @@ static void create_modem(DBusConnection *conn,
 	modem->path = g_strdup(path);
 	modem->conn = dbus_connection_ref(conn);
 
+	modem->has_sim = FALSE;
 	modem->has_push = FALSE;
 	modem->has_agent = FALSE;
 
@@ -267,10 +441,6 @@ static void create_modem(DBusConnection *conn,
 		dbus_message_iter_next(&dict);
 	}
 }
-
-static guint modem_added_watch;
-static guint modem_removed_watch;
-static guint modem_changed_watch;
 
 static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
@@ -404,6 +574,11 @@ static int get_modems(DBusConnection *conn)
 	return 0;
 }
 
+static guint modem_added_watch;
+static guint modem_removed_watch;
+static guint modem_changed_watch;
+static guint sim_changed_watch;
+
 static void ofono_connect(DBusConnection *conn, void *user_data)
 {
 	DBG("");
@@ -424,6 +599,10 @@ static void ofono_connect(DBusConnection *conn, void *user_data)
 	modem_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
 				OFONO_MODEM_INTERFACE, "PropertyChanged",
 						modem_changed, NULL, NULL);
+
+	sim_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
+				OFONO_SIM_INTERFACE, "PropertyChanged",
+						sim_changed, NULL, NULL);
 
 	get_modems(conn);
 }
@@ -447,6 +626,11 @@ static void ofono_disconnect(DBusConnection *conn, void *user_data)
 	if (modem_changed_watch > 0) {
 		g_dbus_remove_watch(conn, modem_changed_watch);
 		modem_changed_watch = 0;
+	}
+
+	if (sim_changed_watch > 0) {
+		g_dbus_remove_watch(conn, sim_changed_watch);
+		sim_changed_watch = 0;
 	}
 
 	g_hash_table_destroy(modem_list);
