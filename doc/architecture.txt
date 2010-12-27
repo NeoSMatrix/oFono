@@ -1,0 +1,30 @@
+Architecture overview
+=====================
+
+The MMS daemon implements the Multimedia Message Service with integration
+into the oFono telephony stack.
+
+
+        +-----------------------+            +-----------+
+        |  Message application  |<---------->|  Tracker  |
+        +-----------------------+            +-----------+
+              |                                    ^
+              | Session D-Bus                      | D-Bus
+              V                                    |
+        +-----------------------+------------------------+
+        |                       |                        |
+        |  MMS daemon           |  Tracker plugin        |
+        |                       |                        |
+        |                       +------------------------+
+        |                       |                        |
+        |                       |  oFono plugin          |
+        |                       |                        |
+        +-----------------------+------------------------+
+                                            |
+                                            | System D-Bus
+                                            V
+        +------------------------------------------------+
+        |                                                |
+        |  oFono telephony stack                         |
+        |                                                |
+        +------------------------------------------------+
