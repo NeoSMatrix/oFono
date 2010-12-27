@@ -1,0 +1,30 @@
+Manager hierarchy
+=================
+
+Service		org.ofono.mms
+Interface	org.ofono.mms.Manager
+Object path	/org/ofono/mms
+
+Methods		array{object,dict} GetServices()
+
+			Get an array of service objects and properties
+			that represents the currently available services.
+
+			This method call should only be used once when an
+			application starts up.  Further service additions
+			and removal shall be monitored via ServiceAdded and
+			ServiceRemoved signals.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		ServiceAdded(object path, dict properties)
+
+			Signal that is sent when a new service is added.  It
+			contains the object path of new service and also its
+			properties.
+
+		ServiceRemoved(object path)
+
+			Signal that is sent when a service has been removed.
+			The object path is no longer accessible after this
+			signal and only emitted for reference.

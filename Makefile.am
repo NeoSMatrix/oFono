@@ -43,7 +43,9 @@ CLEANFILES = src/builtin.h
 
 test_scripts = test/monitor-mms test/get-services
 
-EXTRA_DIST = src/genbuiltin $(test_scripts)
+doc_files = doc/manager-api.txt
+
+EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
