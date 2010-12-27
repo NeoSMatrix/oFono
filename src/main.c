@@ -137,6 +137,8 @@ int main(int argc, char *argv[])
 
 	__mms_dbus_set_connection(conn);
 
+	__mms_service_init();
+
 	__mms_plugin_init();
 
 	memset(&sa, 0, sizeof(sa));
@@ -147,6 +149,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	__mms_plugin_cleanup();
+
+	__mms_service_cleanup();
 
 	__mms_log_cleanup();
 
