@@ -41,7 +41,7 @@ INCLUDES = -I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/gdbus
 
 CLEANFILES = src/builtin.h
 
-test_scripts = test/get-services
+test_scripts = test/monitor-mms test/get-services
 
 EXTRA_DIST = src/genbuiltin $(test_scripts)
 
