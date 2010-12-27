@@ -41,7 +41,9 @@ INCLUDES = -I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/gdbus
 
 CLEANFILES = src/builtin.h
 
-EXTRA_DIST = src/genbuiltin
+test_scripts = test/get-services
+
+EXTRA_DIST = src/genbuiltin $(test_scripts)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
