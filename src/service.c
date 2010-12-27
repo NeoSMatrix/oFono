@@ -84,6 +84,46 @@ void mms_service_unref(struct mms_service *service)
 	g_free(service);
 }
 
+static void append_properties(DBusMessageIter *dict,
+				struct mms_service *service)
+{
+	mms_dbus_dict_append_basic(dict, "Identity",
+				DBUS_TYPE_STRING, &service->identity);
+}
+
+static void emit_service_added(struct mms_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter, dict;
+
+	DBG("service %p", service);
+
+	signal = dbus_message_new_signal(MMS_PATH, MMS_MANAGER_INTERFACE,
+							"ServiceAdded");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&service->path);
+
+	mms_dbus_dict_open(&iter, &dict);
+	append_properties(&dict, service);
+	mms_dbus_dict_close(&iter, &dict);
+
+	g_dbus_send_message(connection, signal);
+}
+
+static void emit_service_removed(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	g_dbus_emit_signal(connection, MMS_PATH, MMS_MANAGER_INTERFACE,
+				"ServiceRemoved", DBUS_TYPE_OBJECT_PATH,
+				&service->path, DBUS_TYPE_INVALID);
+}
+
 int mms_service_register(struct mms_service *service)
 {
 	DBG("service %p", service);
@@ -113,6 +153,8 @@ int mms_service_register(struct mms_service *service)
 
 	service_list = g_list_append(service_list, service);
 
+	emit_service_added(service);
+
 	return 0;
 }
 
@@ -132,10 +174,12 @@ int mms_service_unregister(struct mms_service *service)
 		return -EIO;
 	}
 
+	service_list = g_list_remove(service_list, service);
+
+	emit_service_removed(service);
+
 	g_free(service->path);
 	service->path = NULL;
-
-	service_list = g_list_remove(service_list, service);
 
 	return 0;
 }
@@ -163,13 +207,6 @@ void mms_service_push_notify(struct mms_service *service,
 	DBG("service %p data %p len %d", service, data, len);
 
 	mms_push_notify(data, len);
-}
-
-static void append_properties(DBusMessageIter *dict,
-				struct mms_service *service)
-{
-	mms_dbus_dict_append_basic(dict, "Identity",
-				DBUS_TYPE_STRING, &service->identity);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
@@ -225,6 +262,12 @@ static GDBusMethodTable manager_methods[] = {
 	{ }
 };
 
+static GDBusSignalTable manager_signals[] = {
+	{ "ServiceAdded",   "oa{sv}" },
+	{ "ServiceRemoved", "o"      },
+	{ }
+};
+
 int __mms_service_init(void)
 {
 	DBG("");
@@ -232,9 +275,9 @@ int __mms_service_init(void)
 	connection = mms_dbus_get_connection();
 
 	if (g_dbus_register_interface(connection, MMS_PATH,
-						MMS_MANAGER_INTERFACE,
-						manager_methods, NULL, NULL,
-						NULL, NULL) == FALSE) {
+					MMS_MANAGER_INTERFACE,
+					manager_methods, manager_signals,
+					NULL, NULL, NULL) == FALSE) {
 		mms_error("Failed to register manager interface");
                 return -EIO;
         }
