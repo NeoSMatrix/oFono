@@ -19,13 +19,7 @@
  *
  */
 
-#include <dbus/dbus.h>
 #include <glib.h>
-
-#define MMS_SERVICE	"org.ofono.mms"
-#define MMS_PATH	"/org/ofono/mms"
-
-#define MMS_ERROR_INTERFACE	MMS_SERVICE ".Error"
 
 #include "log.h"
 
@@ -36,6 +30,10 @@ void __mms_log_cleanup(void);
 
 int __mms_plugin_init(void);
 void __mms_plugin_cleanup(void);
+
+#include "dbus.h"
+
+void __mms_dbus_set_connection(DBusConnection *conn);
 
 #include "service.h"
 

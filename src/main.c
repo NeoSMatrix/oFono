@@ -135,6 +135,8 @@ int main(int argc, char *argv[])
 
 	__mms_log_init(option_debug, option_detach);
 
+	__mms_dbus_set_connection(conn);
+
 	__mms_plugin_init();
 
 	memset(&sa, 0, sizeof(sa));

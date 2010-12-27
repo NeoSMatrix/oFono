@@ -17,7 +17,8 @@ libexec_PROGRAMS = src/mmsd
 src_mmsd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/main.c src/mms.h \
 			src/log.h src/log.c src/plugin.h src/plugin.c \
-			src/service.h src/service.c src/push.h src/push.c
+			src/dbus.h src/dbus.c src/service.h src/service.c \
+			src/push.h src/push.c
 
 src_mmsd_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 
