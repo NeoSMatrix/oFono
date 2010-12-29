@@ -99,6 +99,7 @@ static void test_decode_push(gconstpointer data)
 	const void *content_data;
 	struct wsp_header_iter iter;
 	gboolean ret;
+	unsigned int nread;
 
 	g_assert(pdu[1] == 0x06);
 
@@ -109,16 +110,16 @@ static void test_decode_push(gconstpointer data)
 		g_print("Push Content + Header Length: %d\n", pdu[2]);
 	}
 
-	ret = wsp_decode_field(pdu + 3, pdu[2],
-				&content_type, &content_data, &content_len);
+	ret = wsp_decode_field(pdu + 3, pdu[2], &content_type, &content_data,
+				&content_len, &nread);
 	g_assert(ret == TRUE);
 
 	g_print("Content-Type: ");
 
 	dump_field(content_type, content_data, content_len);
 
-	wsp_header_iter_init(&iter, pdu + 3 + content_len,
-				pdu[2] - content_len, 0);
+	wsp_header_iter_init(&iter, pdu + 3 + nread,
+				pdu[2] - nread, 0);
 
 	while (wsp_header_iter_next(&iter)) {
 		const void *hdr = wsp_header_iter_get_hdr(&iter);
