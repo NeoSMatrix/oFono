@@ -55,7 +55,8 @@ struct wsp_header_iter {
 gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 					enum wsp_value_type *out_type,
 					const void **out_value,
-					unsigned int *out_len);
+					unsigned int *out_len,
+					unsigned int *consumed);
 
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,

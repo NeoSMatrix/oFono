@@ -129,9 +129,11 @@ static gboolean decode_uintvar(const unsigned char *pdu, unsigned int len,
 gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 					enum wsp_value_type *out_type,
 					const void **out_value,
-					unsigned int *out_len)
+					unsigned int *out_len,
+					unsigned int *out_read)
 {
 	const unsigned char *end = pdu + max;
+	const unsigned char *begin = pdu;
 	unsigned int len;
 	enum wsp_value_type value;
 	unsigned int consumed;
@@ -178,6 +180,9 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 
 	if (out_len)
 		*out_len = len;
+
+	if (out_read)
+		*out_read = pdu - begin + len;
 
 	return TRUE;
 }
@@ -262,13 +267,13 @@ gboolean wsp_header_iter_next(struct wsp_header_iter *iter)
 		return FALSE;
 
 	if (wsp_decode_field(pdu, end - pdu, &iter->value_type,
-				&iter->value, &iter->len) == FALSE)
+				&iter->value, &iter->len, &consumed) == FALSE)
 		return FALSE;
 
 	iter->header_type = header;
 	iter->header = hdr;
 
-	iter->pos = pdu + iter->len - iter->pdu;
+	iter->pos = pdu + consumed - iter->pdu;
 
 	return TRUE;
 }
