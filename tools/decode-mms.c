@@ -46,6 +46,32 @@ static const unsigned char mms_msg1[] = {
 				0x49, 0x5A, 0x4F, 0x00
 };
 
+#define MMS_HDR_BCC			0x01
+#define MMS_HDR_CC			0x02
+#define MMS_HDR_CONTENT_LOCATION	0x03
+#define MMS_HDR_CONTENT_TYPE		0x04
+#define MMS_HDR_DATE			0x05
+#define MMS_HDR_DELIVERY_REPORT		0x06
+#define MMS_HDR_DELIVERY_TIME		0x07
+#define MMS_HDR_EXPIRY			0x08
+#define MMS_HDR_FROM			0x09
+#define MMS_HDR_MESSAGE_CLASS		0x0a
+#define MMS_HDR_MESSAGE_ID		0x0b
+#define MMS_HDR_MESSAGE_TYPE		0x0c
+#define MMS_HDR_MMS_VERSION		0x0d
+#define MMS_HDR_MESSAGE_SIZE		0x0e
+#define MMS_HDR_PRIORITY		0x0f
+#define MMS_HDR_READ_REPLY		0x10
+#define MMS_HDR_REPORT_ALLOWED		0x11
+#define MMS_HDR_RESPONSE_STATUS		0x12
+#define MMS_HDR_RESPONSE_TEXT		0x13
+#define MMS_HDR_SENDER_VISIBILITY	0x14
+#define MMS_HDR_STATUS			0x15
+#define MMS_HDR_SUBJECT			0x16
+#define MMS_HDR_TO			0x17
+#define MMS_HDR_TRANSACTION_ID		0x18
+
+
 static const char *mms_header[] = {
 	NULL,
 	"Bcc",
