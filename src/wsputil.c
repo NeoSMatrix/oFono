@@ -101,9 +101,8 @@ static const char *decode_text(const unsigned char *pdu, unsigned int len,
 }
 #endif
 
-static gboolean decode_uintvar(const unsigned char *pdu, unsigned int len,
-					unsigned int *out_len,
-					unsigned int *consumed)
+gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
+				unsigned int *out_len, unsigned int *consumed)
 {
 	unsigned int var;
 	unsigned int i;
@@ -155,7 +154,8 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 		if (pdu == end)
 			return FALSE;
 
-		if (decode_uintvar(pdu, end - pdu, &len, &consumed) == FALSE)
+		if (wsp_decode_uintvar(pdu, end - pdu,
+						&len, &consumed) == FALSE)
 			return FALSE;
 
 		pdu += consumed;
