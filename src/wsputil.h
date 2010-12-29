@@ -65,6 +65,6 @@ unsigned char wsp_header_iter_get_code_page(struct wsp_header_iter *iter);
 
 enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter);
-enum wsp_header_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter);
+enum wsp_value_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_val(struct wsp_header_iter *iter);
 unsigned int wsp_header_iter_get_val_len(struct wsp_header_iter *iter);

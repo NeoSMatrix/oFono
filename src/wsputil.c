@@ -288,7 +288,7 @@ const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter)
 	return iter->header;
 }
 
-enum wsp_header_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter)
+enum wsp_value_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter)
 {
 	return iter->value_type;
 }
