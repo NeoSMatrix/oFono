@@ -94,32 +94,45 @@ static void test_decode_push(gconstpointer data)
 	const struct push_test *test = data;
 	const unsigned char *pdu = test->pdu;
 	unsigned int len = test->len;
+	unsigned int headerslen;
 	unsigned int content_len;
 	enum wsp_value_type content_type;
 	const void *content_data;
 	struct wsp_header_iter iter;
 	gboolean ret;
 	unsigned int nread;
+	unsigned int consumed;
 
 	g_assert(pdu[1] == 0x06);
+
+	/* Consume TID and Type */
+	nread = 2;
+
+	ret = wsp_decode_uintvar(pdu + nread, len, &headerslen, &consumed);
+	g_assert(ret == TRUE);
+
+	/* Consume uintvar bytes */
+	nread += consumed;
 
 	if (g_test_verbose()) {
 		g_print("Overall Push Length: %d\n", len);
 		g_print("TID: %d\n", pdu[0]);
 		g_print("Type: %d\n", pdu[1]);
-		g_print("Push Content + Header Length: %d\n", pdu[2]);
+		g_print("Push Content + Header Length: %d\n", headerslen);
 	}
 
-	ret = wsp_decode_field(pdu + 3, pdu[2], &content_type, &content_data,
-				&content_len, &nread);
+	ret = wsp_decode_field(pdu + nread, headerslen, &content_type,
+				&content_data, &content_len, &consumed);
 	g_assert(ret == TRUE);
+
+	/* Consume Content Type bytes */
+	nread += consumed;
 
 	g_print("Content-Type: ");
 
 	dump_field(content_type, content_data, content_len);
 
-	wsp_header_iter_init(&iter, pdu + 3 + nread,
-				pdu[2] - nread, 0);
+	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
 	while (wsp_header_iter_next(&iter)) {
 		const void *hdr = wsp_header_iter_get_hdr(&iter);
