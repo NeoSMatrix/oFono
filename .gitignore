@@ -28,3 +28,4 @@ src/builtin.h
 src/mmsd
 
 unit/test-wsputil
+tools/decode-mms

@@ -47,13 +47,13 @@ doc_files = doc/architecture.txt doc/manager-api.txt
 
 EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files)
 
-noinst_PROGRAMS = unit/test-wsputil
-
-unit_objects =
+noinst_PROGRAMS = unit/test-wsputil tools/decode-mms
 
 unit_test_wsputil_SOURCES = unit/test-wsputil.c src/wsputil.c src/wsputil.h
 unit_test_wsputil_LDADD = @GLIB_LIBS@
-unit_objects += $(unit_test_wsputil_OBJECTS)
+
+tools_decode_mms_SOURCES = src/wsputil.h src/wsputil.c tools/decode-mms.c
+tools_decode_mms_LDADD = @GLIB_LIBS@
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
