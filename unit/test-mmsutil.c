@@ -104,12 +104,12 @@ struct mms_test {
 	unsigned int len;
 };
 
-static struct mms_test mms_notification_test_1 = {
+static const struct mms_test mms_notification_test_1 = {
 	.pdu = mms_msg1,
 	.len = sizeof(mms_msg1),
 };
 
-static struct mms_test mms_notification_test_2 = {
+static const struct mms_test mms_notification_test_2 = {
 	.pdu = mms_msg2,
 	.len = sizeof(mms_msg2),
 };

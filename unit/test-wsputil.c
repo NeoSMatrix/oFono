@@ -104,12 +104,12 @@ struct push_test {
 	unsigned int len;
 };
 
-static struct push_test push_test_1 = {
+static const struct push_test push_test_1 = {
 	.pdu = push1,
 	.len = sizeof(push1),
 };
 
-static struct push_test push_test_2 = {
+static const struct push_test push_test_2 = {
 	.pdu = push2,
 	.len = sizeof(push2),
 };
