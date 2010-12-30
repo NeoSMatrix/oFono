@@ -57,6 +57,8 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 					const void **out_value,
 					unsigned int *out_len,
 					unsigned int *consumed);
+const char *wsp_decode_token_text(const unsigned char *pdu, unsigned int len,
+					unsigned int *consumed);
 const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
 

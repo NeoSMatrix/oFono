@@ -69,7 +69,7 @@ static const char *decode_text_common(const unsigned char *pdu,
 	return (const char *) pdu;
 }
 
-static const char *decode_token_text(const unsigned char *pdu, unsigned int len,
+const char *wsp_decode_token_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed)
 {
 	return decode_text_common(pdu, len, TRUE, TRUE, consumed);
@@ -245,7 +245,7 @@ gboolean wsp_header_iter_next(struct wsp_header_iter *iter)
 		hdr = pdu;
 		pdu++;
 	} else {
-		if (decode_token_text(pdu, end - pdu, &consumed) == NULL)
+		if (wsp_decode_token_text(pdu, end - pdu, &consumed) == NULL)
 			return FALSE;
 
 		header = WSP_HEADER_TYPE_APPLICATION;
