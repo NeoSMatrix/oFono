@@ -23,6 +23,12 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
 #include <glib.h>
 #include <glib/gprintf.h>
 
@@ -93,6 +99,7 @@ static const unsigned char mms_msg2[] = {
 };
 
 struct mms_test {
+	const char *pathname;
 	const unsigned char *pdu;
 	unsigned int len;
 };
@@ -110,12 +117,49 @@ static struct mms_test mms_notification_test_2 = {
 static void test_decode_mms(gconstpointer data)
 {
 	const struct mms_test *test = data;
-	const unsigned char *pdu = test->pdu;
-	unsigned int len = test->len;
 	struct mms_message msg;
+	unsigned int len;
 	gboolean ret;
 
-	ret = mms_message_decode(pdu, len, &msg);
+	if (test->pathname != NULL) {
+		struct stat st;
+		unsigned char *pdu;
+		int fd;
+
+		fd = open(test->pathname, O_RDONLY);
+		if (fd < 0) {
+			g_printerr("Failed to open %s\n", test->pathname);
+			return;
+		}
+
+		if (fstat(fd, &st) < 0) {
+			g_printerr("Failed to stat %s\n", test->pathname);
+			close(fd);
+			return;
+		}
+
+		len = st.st_size;
+
+		pdu = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
+		if (!pdu || pdu == MAP_FAILED) {
+			g_printerr("Failed to mmap %s\n", test->pathname);
+			close(fd);
+			return;
+		}
+
+		ret = mms_message_decode(pdu, len, &msg);
+
+		munmap(pdu, len);
+
+		close(fd);
+	} else {
+		const unsigned char *pdu = test->pdu;
+
+		len = test->len;
+
+		ret = mms_message_decode(pdu, len, &msg);
+	}
+
 	g_assert(ret == TRUE);
 
 	if (g_test_verbose()) {
@@ -127,7 +171,7 @@ static void test_decode_mms(gconstpointer data)
 		g_print("MMS version: %u.%u\n", (msg.version & 0x70) >> 4,
 							msg.version & 0x0f);
 
-		switch(msg.type) {
+		switch (msg.type) {
 		case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 			dump_notification_ind(&msg);
 			break;
