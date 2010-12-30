@@ -38,12 +38,23 @@ struct mms_notification_ind {
 	char *location;
 };
 
+struct mms_retrieve_conf {
+	char *from;
+	char *to;
+	char *subject;
+	char *cls;
+	char *priority;
+	char *msgid;
+	time_t date;
+};
+
 struct mms_message {
 	enum mms_message_type type;
 	char *transaction_id;
 	unsigned char version;
 	union {
 		struct mms_notification_ind ni;
+		struct mms_retrieve_conf rc;
 	};
 };
 

@@ -236,6 +236,35 @@ static gboolean extract_message_class(struct wsp_header_iter *iter, void *user)
 	return TRUE;
 }
 
+static gboolean extract_priority(struct wsp_header_iter *iter, void *user)
+{
+	char **out = user;
+	const unsigned char *p;
+	unsigned int l;
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
+		return FALSE;
+
+	p = wsp_header_iter_get_val(iter);
+	l = wsp_header_iter_get_val_len(iter);
+
+	switch (p[0]) {
+	case 128:
+		*out = g_strdup("Low");
+		return TRUE;
+	case 129:
+		*out = g_strdup("Normal");
+		return TRUE;
+	case 130:
+		*out = g_strdup("High");
+		return TRUE;
+	default:
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static gboolean extract_unsigned(struct wsp_header_iter *iter, void *user)
 {
 	unsigned long *out = user;
@@ -290,7 +319,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_MESSAGE_SIZE:
 		return extract_unsigned;
 	case MMS_HEADER_PRIORITY:
-		return NULL;
+		return extract_priority;
 	case MMS_HEADER_READ_REPLY:
 		return NULL;
 	case MMS_HEADER_REPORT_ALLOWED:
@@ -401,6 +430,26 @@ static gboolean decode_notification_ind(struct wsp_header_iter *iter,
 				MMS_HEADER_INVALID);
 }
 
+static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
+						struct mms_message *out)
+{
+	return mms_parse_headers(iter, MMS_HEADER_FROM,
+				0, &out->rc.from,
+				MMS_HEADER_TO,
+				0, &out->rc.to,
+				MMS_HEADER_SUBJECT,
+				0, &out->rc.subject,
+				MMS_HEADER_MESSAGE_CLASS,
+				0, &out->rc.cls,
+				MMS_HEADER_PRIORITY,
+				0, &out->rc.priority,
+				MMS_HEADER_MESSAGE_ID,
+				0, &out->rc.msgid,
+				MMS_HEADER_DATE,
+				HEADER_FLAG_MANDATORY, &out->rc.date,
+				MMS_HEADER_INVALID);
+}
+
 #define CHECK_WELL_KNOWN_HDR(hdr)			\
 	if (wsp_header_iter_next(&iter) == FALSE)	\
 		return FALSE;				\
@@ -456,7 +505,7 @@ gboolean mms_message_decode(const unsigned char *pdu,
 	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
 		return FALSE;
 	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
-		return FALSE;
+		return decode_retrieve_conf(&iter, out);
 	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
 		return FALSE;
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
