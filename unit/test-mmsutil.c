@@ -71,6 +71,22 @@ static void dump_notification_ind(struct mms_message *msg)
 	g_print("Location: %s\n", msg->ni.location);
 }
 
+static void dump_retrieve_conf(struct mms_message *msg)
+{
+	char buf[128];
+
+	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime(&msg->rc.date));
+	buf[127] = '\0';
+
+	g_print("From: %s\n", msg->rc.from);
+	g_print("To: %s\n", msg->rc.to);
+	g_print("Subject: %s\n", msg->rc.subject);
+	g_print("Class: %s\n", msg->rc.cls);
+	g_print("Priority: %s\n", msg->rc.priority);
+	g_print("Msg-Id: %s\n", msg->rc.msgid);
+	g_print("Date: %s\n", buf);
+}
+
 static const unsigned char mms_msg1[] = {
 				0x8C, 0x82, 0x98, 0x4F, 0x67, 0x51, 0x4B, 0x4B,
 				0x42, 0x00, 0x8D, 0x90, 0x89, 0x08, 0x80, 0x45,
@@ -174,6 +190,9 @@ static void test_decode_mms(gconstpointer data)
 		switch (msg.type) {
 		case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 			dump_notification_ind(&msg);
+			break;
+		case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
+			dump_retrieve_conf(&msg);
 			break;
 		default:
 			break;
