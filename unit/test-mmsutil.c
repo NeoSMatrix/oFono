@@ -87,7 +87,7 @@ static void test_decode_mms(gconstpointer data)
 		g_print("MMS message type: %s\n",
 				message_type_to_string(mms.type));
 		g_print("MMS transaction id: %s\n", mms.transaction_id);
-		g_print("MMS version: %d\n", mms.version);
+		g_print("MMS version: %x\n", mms.version);
 	}
 
 	mms_free(&mms);
