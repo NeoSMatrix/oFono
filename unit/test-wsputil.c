@@ -179,6 +179,8 @@ static void test_decode_push(gconstpointer data)
 		dump_field(wsp_header_iter_get_val_type(&iter), val,
 				wsp_header_iter_get_val_len(&iter));
 	}
+
+	g_print("Body Length: %d\n", len - nread - headerslen + consumed);
 }
 
 int main(int argc, char **argv)

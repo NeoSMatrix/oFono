@@ -103,6 +103,8 @@ static void test_decode_mms(gconstpointer data)
 	g_assert(ret == TRUE);
 
 	if (g_test_verbose()) {
+		g_print("Overall message size: %d\n", len);
+
 		g_print("MMS message type: %s\n",
 				message_type_to_string(msg.type));
 		g_print("MMS transaction id: %s\n", msg.transaction_id);
