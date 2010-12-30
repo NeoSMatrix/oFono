@@ -50,6 +50,21 @@ static const char *message_type_to_string(enum mms_message_type type)
 	return NULL;
 }
 
+static void dump_notification_ind(struct mms_message *msg)
+{
+	char buf[128];
+
+	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime(&msg->ni.expiry));
+	buf[127] = '\0';
+
+	g_print("From: %s\n", msg->ni.from);
+	g_print("Subject: %s\n", msg->ni.subject);
+	g_print("Class: %s\n", msg->ni.cls);
+	g_print("Size: %d\n", msg->ni.size);
+	g_print("Expiry: %s\n", buf);
+	g_print("Location: %s\n", msg->ni.location);
+}
+
 static const unsigned char mms_msg1[] = {
 				0x8C, 0x82, 0x98, 0x4F, 0x67, 0x51, 0x4B, 0x4B,
 				0x42, 0x00, 0x8D, 0x90, 0x89, 0x08, 0x80, 0x45,
@@ -110,6 +125,14 @@ static void test_decode_mms(gconstpointer data)
 		g_print("MMS transaction id: %s\n", msg.transaction_id);
 		g_print("MMS version: %u.%u\n", (msg.version & 0x70) >> 4,
 							msg.version & 0x0f);
+
+		switch(msg.type) {
+		case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+			dump_notification_ind(&msg);
+			break;
+		default:
+			break;
+		}
 	}
 
 	mms_message_free(&msg);
