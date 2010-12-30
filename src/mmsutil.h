@@ -38,7 +38,7 @@ struct mms_notification_ind {
 	char *location;
 };
 
-struct mms {
+struct mms_message {
 	enum mms_message_type type;
 	char *transaction_id;
 	unsigned char version;
@@ -47,6 +47,6 @@ struct mms {
 	};
 };
 
-gboolean mms_decode(const unsigned char *pdu,
-			unsigned int len, struct mms *out);
-void mms_free(struct mms *mms);
+gboolean mms_message_decode(const unsigned char *pdu,
+				unsigned int len, struct mms_message *out);
+void mms_message_free(struct mms_message *msg);

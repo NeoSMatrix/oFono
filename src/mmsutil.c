@@ -110,8 +110,8 @@ static gboolean extract_text(struct wsp_header_iter *iter, enum mms_header hdr,
 	return TRUE;
 }
 
-gboolean mms_decode(const unsigned char *pdu,
-				unsigned int len, struct mms *out)
+gboolean mms_message_decode(const unsigned char *pdu,
+				unsigned int len, struct mms_message *out)
 {
 	struct wsp_header_iter iter;
 	unsigned char octet;
@@ -141,7 +141,7 @@ gboolean mms_decode(const unsigned char *pdu,
 	return TRUE;
 }
 
-void mms_free(struct mms *mms)
+void mms_message_free(struct mms_message *msg)
 {
-	g_free(mms->transaction_id);
+	g_free(msg->transaction_id);
 }

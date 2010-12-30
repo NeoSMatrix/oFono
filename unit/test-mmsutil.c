@@ -96,20 +96,20 @@ static void test_decode_mms(gconstpointer data)
 	const struct mms_test *test = data;
 	const unsigned char *pdu = test->pdu;
 	unsigned int len = test->len;
-	struct mms mms;
+	struct mms_message msg;
 	gboolean ret;
 
-	ret = mms_decode(pdu, len, &mms);
+	ret = mms_message_decode(pdu, len, &msg);
 	g_assert(ret == TRUE);
 
 	if (g_test_verbose()) {
 		g_print("MMS message type: %s\n",
-				message_type_to_string(mms.type));
-		g_print("MMS transaction id: %s\n", mms.transaction_id);
-		g_print("MMS version: %x\n", mms.version);
+				message_type_to_string(msg.type));
+		g_print("MMS transaction id: %s\n", msg.transaction_id);
+		g_print("MMS version: %x\n", msg.version);
 	}
 
-	mms_free(&mms);
+	mms_message_free(&msg);
 }
 
 int main(int argc, char **argv)
