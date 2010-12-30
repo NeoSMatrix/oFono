@@ -49,3 +49,4 @@ struct mms {
 
 gboolean mms_decode(const unsigned char *pdu,
 			unsigned int len, struct mms *out);
+void mms_free(struct mms *mms);

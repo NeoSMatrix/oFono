@@ -140,3 +140,8 @@ gboolean mms_decode(const unsigned char *pdu,
 
 	return TRUE;
 }
+
+void mms_free(struct mms *mms)
+{
+	g_free(mms->transaction_id);
+}
