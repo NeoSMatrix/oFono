@@ -63,6 +63,7 @@ enum mms_header {
 	MMS_HEADER_SUBJECT =			0x16,
 	MMS_HEADER_TO =				0x17,
 	MMS_HEADER_TRANSACTION_ID =		0x18,
+	__MMS_HEADER_MAX =			0x19,
 	MMS_HEADER_INVALID =			0x80,
 };
 
@@ -315,7 +316,7 @@ struct header_handler_entry {
 static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 					enum mms_header header, ...)
 {
-	struct header_handler_entry entries[MMS_HEADER_TRANSACTION_ID + 1];
+	struct header_handler_entry entries[__MMS_HEADER_MAX + 1];
 	va_list args;
 	const unsigned char *p;
 	int i;
@@ -364,7 +365,7 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		entries[p[0] & 0x7f].flags |= HEADER_FLAG_MARKED;
 	}
 
-	for (i = 0; i < MMS_HEADER_TRANSACTION_ID + 1; i++) {
+	for (i = 0; i < __MMS_HEADER_MAX + 1; i++) {
 		if ((entries[i].flags & HEADER_FLAG_MANDATORY) &&
 				!(entries[i].flags & HEADER_FLAG_MARKED))
 			return FALSE;
