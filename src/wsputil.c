@@ -75,8 +75,7 @@ static const char *decode_token_text(const unsigned char *pdu, unsigned int len,
 	return decode_text_common(pdu, len, TRUE, TRUE, consumed);
 }
 
-#if 0
-static const char *decode_text(const unsigned char *pdu, unsigned int len,
+const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed)
 {
 	const char *r;
@@ -99,7 +98,6 @@ static const char *decode_text(const unsigned char *pdu, unsigned int len,
 
 	return r;
 }
-#endif
 
 gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 				unsigned int *out_len, unsigned int *consumed)
