@@ -27,5 +27,17 @@
 
 void mms_push_notify(unsigned char *data, int len)
 {
+	GString *hex;
+	int i;
+
 	DBG("data %p len %d", data, len);
+
+	hex = g_string_sized_new(len * 2);
+
+	for (i = 0; i < len; i++)
+		g_string_append_printf(hex, "%02X", data[i]);
+
+	DBG("%s", hex->str);
+
+	g_string_free(hex, TRUE);
 }
