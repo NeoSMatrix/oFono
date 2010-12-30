@@ -30,3 +30,4 @@ src/mmsd
 unit/test-wsputil
 unit/test-mmsutil
 tools/decode-mms
+tools/create-hex-array
