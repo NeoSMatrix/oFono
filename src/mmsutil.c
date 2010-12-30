@@ -331,6 +331,8 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		header = va_arg(args, enum mms_header);
 	}
 
+	va_end(args);
+
 	while (wsp_header_iter_next(iter)) {
 		unsigned char h;
 		header_handler handler;
