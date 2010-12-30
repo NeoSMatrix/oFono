@@ -28,4 +28,5 @@ src/builtin.h
 src/mmsd
 
 unit/test-wsputil
+unit/test-mmsutil
 tools/decode-mms
