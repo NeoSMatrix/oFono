@@ -97,12 +97,12 @@ struct mms_test {
 	unsigned int len;
 };
 
-static struct mms_test mms_test_1 = {
+static struct mms_test mms_notification_test_1 = {
 	.pdu = mms_msg1,
 	.len = sizeof(mms_msg1),
 };
 
-static struct mms_test mms_test_2 = {
+static struct mms_test mms_notification_test_2 = {
 	.pdu = mms_msg2,
 	.len = sizeof(mms_msg2),
 };
@@ -143,10 +143,10 @@ int main(int argc, char **argv)
 {
 	g_test_init(&argc, &argv, NULL);
 
-	g_test_add_data_func("/mmsutil/Decode MMS 1", &mms_test_1,
-				test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS 2", &mms_test_2,
-				test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS Notification 1",
+				&mms_notification_test_1, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS Notification 2",
+				&mms_notification_test_2, test_decode_mms);
 
 	return g_test_run();
 }
