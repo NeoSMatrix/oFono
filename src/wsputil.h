@@ -19,8 +19,6 @@
  *
  */
 
-struct wsp_header_iter;
-
 enum wsp_header_iter_flag {
 	WSP_HEADER_ITER_FLAG_REJECT_CP =	0x1,
 };
