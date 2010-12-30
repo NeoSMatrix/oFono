@@ -46,6 +46,8 @@ static const char *message_type_to_string(enum mms_message_type type)
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
 		return "delivery-ind";
 	}
+
+	return NULL;
 }
 
 static const unsigned char mms_msg1[] = {
