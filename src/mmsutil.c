@@ -283,6 +283,10 @@ static header_handler handler_for_type(enum mms_header header)
 		return extract_message_class;
 	case MMS_HEADER_MESSAGE_ID:
 		return extract_text;
+	case MMS_HEADER_MESSAGE_TYPE:
+		return NULL;
+	case MMS_HEADER_MMS_VERSION:
+		return NULL;
 	case MMS_HEADER_MESSAGE_SIZE:
 		return extract_unsigned;
 	case MMS_HEADER_PRIORITY:
@@ -303,9 +307,14 @@ static header_handler handler_for_type(enum mms_header header)
 		return extract_text;
 	case MMS_HEADER_TO:
 		return extract_text;
-	default:
+	case MMS_HEADER_TRANSACTION_ID:
+		return NULL;
+	case MMS_HEADER_INVALID:
+	case __MMS_HEADER_MAX:
 		return NULL;
 	}
+
+	return NULL;
 }
 
 struct header_handler_entry {
