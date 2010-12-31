@@ -38,6 +38,7 @@
 #define OFONO_MODEM_INTERFACE	OFONO_SERVICE ".Modem"
 #define OFONO_SIM_INTERFACE	OFONO_SERVICE ".SimManager"
 #define OFONO_GPRS_INTERFACE	OFONO_SERVICE ".ConnectionManager"
+#define OFONO_CONTEXT_INTERFACE	OFONO_SERVICE ".ConnectionContext"
 #define OFONO_PUSH_INTERFACE	OFONO_SERVICE ".PushNotification"
 #define OFONO_AGENT_INTERFACE	OFONO_SERVICE ".PushNotificationAgent"
 
@@ -52,6 +53,8 @@ struct modem_data {
 	dbus_bool_t sim_present;
 	char *sim_identity;
 	dbus_bool_t gprs_attached;
+	char *context_path;
+	dbus_bool_t context_active;
 };
 
 static GHashTable *modem_list;
@@ -144,6 +147,8 @@ static void remove_modem(gpointer data)
 		remove_agent(modem);
 
 	dbus_connection_unref(modem->conn);
+
+	g_free(modem->context_path);
 
 	g_free(modem->sim_identity);
 
@@ -354,6 +359,224 @@ static int get_sim_properties(struct modem_data *modem)
 	return 0;
 }
 
+static void check_context_active(struct modem_data *modem,
+						DBusMessageIter *iter)
+{
+	dbus_bool_t active;
+
+	dbus_message_iter_get_basic(iter, &active);
+
+	if (modem->context_active == active)
+		return;
+
+	modem->context_active = active;
+
+	DBG("Context active %d", modem->context_active);
+}
+
+static void create_context(struct modem_data *modem,
+				const char *path, DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+
+	if (modem->context_path != NULL)
+		return;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Type") == TRUE) {
+			const char *type;
+
+			dbus_message_iter_get_basic(&value, &type);
+
+			if (g_str_equal(type, "mms") == FALSE)
+				return;
+
+			modem->context_path = g_strdup(path);
+
+			DBG("path %s", modem->context_path);
+		} else if (g_str_equal(key, "Active") == TRUE)
+			check_context_active(modem, &value);
+
+		dbus_message_iter_next(&dict);
+	}
+}
+
+static gboolean context_added(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessageIter iter;
+	const char *path;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	path = dbus_message_get_path(message);
+
+	modem = g_hash_table_lookup(modem_list, path);
+	if (modem == NULL)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	dbus_message_iter_next(&iter);
+
+	create_context(modem, path, &iter);
+
+	return TRUE;
+}
+
+static gboolean context_removed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessageIter iter;
+	const char *path;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	path = dbus_message_get_path(message);
+
+	modem = g_hash_table_lookup(modem_list, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (modem->context_path == NULL)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	if (g_str_equal(path, modem->context_path) == TRUE) {
+		modem->context_path = NULL;
+		modem->context_active = FALSE;
+
+		DBG("Context active %d", modem->context_active);
+	}
+
+	return TRUE;
+}
+
+static gboolean context_match(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	struct modem_data *modem = value;
+	const char *path = user_data;
+
+	if (modem->context_path == NULL)
+		return FALSE;
+
+	return g_str_equal(modem->context_path, path);
+}
+
+static gboolean context_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *path, *key;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	path = dbus_message_get_path(message);
+
+	modem = g_hash_table_find(modem_list, context_match, (char *) path);
+	if (modem == NULL)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Active") == TRUE)
+		check_context_active(modem, &value);
+
+	return TRUE;
+}
+
+static void get_contexts_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessageIter iter, list;
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE) {
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, "a(oa{sv})") == FALSE)
+		goto done;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&iter, &list);
+
+	while (dbus_message_iter_get_arg_type(&list) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter entry;
+		const char *path;
+
+		dbus_message_iter_recurse(&list, &entry);
+		dbus_message_iter_get_basic(&entry, &path);
+
+		dbus_message_iter_next(&entry);
+
+		create_context(modem, path, &entry);
+
+		dbus_message_iter_next(&list);
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int get_contexts(struct modem_data *modem)
+{
+	DBusConnection *conn = modem->conn;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+					OFONO_GPRS_INTERFACE, "GetContexts");
+	if (msg == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL)
+		return -EINVAL;
+
+	dbus_pending_call_set_notify(call, get_contexts_reply, modem, NULL);
+
+	dbus_pending_call_unref(call);
+
+	return 0;
+}
+
 static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
 {
 	dbus_bool_t attached;
@@ -366,6 +589,15 @@ static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
 	modem->gprs_attached = attached;
 
 	DBG("GPRS attached %d", modem->gprs_attached);
+
+	if (modem->gprs_attached == FALSE) {
+		g_free(modem->context_path);
+		modem->context_path = NULL;
+
+		modem->context_active = FALSE;
+
+		DBG("Context active %d", modem->context_active);
+	}
 }
 
 static gboolean gprs_changed(DBusConnection *connection,
@@ -436,6 +668,8 @@ static void get_gprs_properties_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	get_contexts(modem);
 }
 
 static int get_gprs_properties(struct modem_data *modem)
@@ -520,6 +754,13 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 			modem->gprs_attached = FALSE;
 
 			DBG("GPRS attached %d", modem->gprs_attached);
+
+			g_free(modem->context_path);
+			modem->context_path = NULL;
+
+			modem->context_active = FALSE;
+
+			DBG("Context active %d", modem->context_active);
 		} else
 			get_gprs_properties(modem);
 	}
@@ -585,7 +826,7 @@ static void create_modem(DBusConnection *conn,
 static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	DBusMessageIter iter, dict;
+	DBusMessageIter iter;
 	const char *path;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
@@ -594,7 +835,6 @@ static gboolean modem_added(DBusConnection *connection,
 	dbus_message_iter_get_basic(&iter, &path);
 
 	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &dict);
 
 	create_modem(connection, path, &iter);
 
@@ -667,14 +907,13 @@ static void get_modems_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_iter_recurse(&iter, &list);
 
 	while (dbus_message_iter_get_arg_type(&list) == DBUS_TYPE_STRUCT) {
-		DBusMessageIter entry, dict;
+		DBusMessageIter entry;
 		const char *path;
 
 		dbus_message_iter_recurse(&list, &entry);
 		dbus_message_iter_get_basic(&entry, &path);
 
 		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &dict);
 
 		create_modem(conn, path, &entry);
 
@@ -719,6 +958,9 @@ static guint modem_removed_watch;
 static guint modem_changed_watch;
 static guint sim_changed_watch;
 static guint gprs_changed_watch;
+static guint context_added_watch;
+static guint context_removed_watch;
+static guint context_changed_watch;
 
 static void ofono_connect(DBusConnection *conn, void *user_data)
 {
@@ -748,6 +990,18 @@ static void ofono_connect(DBusConnection *conn, void *user_data)
 	gprs_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
 				OFONO_GPRS_INTERFACE, "PropertyChanged",
 						gprs_changed, NULL, NULL);
+
+	context_added_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
+					OFONO_GPRS_INTERFACE, "ContextAdded",
+						context_added, NULL, NULL);
+
+	context_removed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
+					OFONO_GPRS_INTERFACE, "ContextRemoved",
+						context_removed, NULL, NULL);
+
+	context_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
+				OFONO_CONTEXT_INTERFACE, "PropertyChanged",
+						context_changed, NULL, NULL);
 
 	get_modems(conn);
 }
@@ -781,6 +1035,21 @@ static void ofono_disconnect(DBusConnection *conn, void *user_data)
 	if (gprs_changed_watch > 0) {
 		g_dbus_remove_watch(conn, gprs_changed_watch);
 		gprs_changed_watch = 0;
+	}
+
+	if (context_added_watch > 0) {
+		g_dbus_remove_watch(conn, context_added_watch);
+		context_added_watch = 0;
+	}
+
+	if (context_removed_watch > 0) {
+		g_dbus_remove_watch(conn, context_removed_watch);
+		context_removed_watch = 0;
+	}
+
+	if (context_changed_watch > 0) {
+		g_dbus_remove_watch(conn, context_changed_watch);
+		context_changed_watch = 0;
 	}
 
 	g_hash_table_destroy(modem_list);
