@@ -53,6 +53,7 @@ struct modem_data {
 	dbus_bool_t sim_present;
 	char *sim_identity;
 	dbus_bool_t gprs_attached;
+	char *message_center;
 	char *context_path;
 	dbus_bool_t context_active;
 	char *context_interface;
@@ -150,6 +151,7 @@ static void remove_modem(gpointer data)
 
 	dbus_connection_unref(modem->conn);
 
+	g_free(modem->message_center);
 	g_free(modem->context_path);
 	g_free(modem->context_interface);
 	g_free(modem->context_proxy);
@@ -445,6 +447,21 @@ static void check_context_settings(struct modem_data *modem,
 					modem->context_proxy);
 }
 
+static void check_context_message_center(struct modem_data *modem,
+						DBusMessageIter *iter)
+{
+	char *message_center;
+
+	dbus_message_iter_get_basic(iter, &message_center);
+
+	g_free(modem->message_center);
+	modem->message_center = g_strdup(message_center);
+
+	DBG("Message center %s", modem->message_center);
+
+	mms_service_set_mmsc(modem->service, modem->message_center);
+}
+
 static void create_context(struct modem_data *modem,
 				const char *path, DBusMessageIter *iter)
 {
@@ -480,6 +497,8 @@ static void create_context(struct modem_data *modem,
 			check_context_active(modem, &value);
 		else if (g_str_equal(key, "Settings") == TRUE)
 			check_context_settings(modem, &value);
+		else if (g_str_equal(key, "MessageCenter") == TRUE)
+			check_context_message_center(modem, &value);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -578,6 +597,8 @@ static gboolean context_changed(DBusConnection *connection,
 		check_context_active(modem, &value);
 	else if (g_str_equal(key, "Settings") == TRUE)
 		check_context_settings(modem, &value);
+	else if (g_str_equal(key, "MessageCenter") == TRUE)
+		check_context_message_center(modem, &value);
 
 	return TRUE;
 }
