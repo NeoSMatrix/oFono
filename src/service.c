@@ -209,6 +209,17 @@ void mms_service_push_notify(struct mms_service *service,
 	mms_push_notify(data, len);
 }
 
+void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
+				const char *interface, const char *proxy)
+{
+	DBG("service %p active %d", service, active);
+
+	if (active == FALSE)
+		return;
+
+	DBG("interface %s proxy %s", interface, proxy);
+}
+
 static void append_struct(gpointer value, gpointer user_data)
 {
 	struct mms_service *service = value;

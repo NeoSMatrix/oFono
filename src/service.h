@@ -19,6 +19,8 @@
  *
  */
 
+#include "types.h"
+
 struct mms_service;
 
 struct mms_service *mms_service_create(void);
@@ -33,3 +35,6 @@ int mms_service_set_identity(struct mms_service *service,
 
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len);
+
+void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
+				const char *interface, const char *proxy);
