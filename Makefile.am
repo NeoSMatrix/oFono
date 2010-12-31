@@ -15,7 +15,7 @@ builtin_sources += plugins/ofono.c
 libexec_PROGRAMS = src/mmsd
 
 src_mmsd_SOURCES = $(gdbus_sources) $(builtin_sources) \
-			src/main.c src/mms.h \
+			src/main.c src/mms.h src/types.h \
 			src/log.h src/log.c src/plugin.h src/plugin.c \
 			src/dbus.h src/dbus.c src/service.h src/service.c \
 			src/push.h src/push.c src/wsputil.h src/wsputil.c \
