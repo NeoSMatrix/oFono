@@ -37,6 +37,7 @@
 #define OFONO_MANAGER_INTERFACE	OFONO_SERVICE ".Manager"
 #define OFONO_MODEM_INTERFACE	OFONO_SERVICE ".Modem"
 #define OFONO_SIM_INTERFACE	OFONO_SERVICE ".SimManager"
+#define OFONO_GPRS_INTERFACE	OFONO_SERVICE ".ConnectionManager"
 #define OFONO_PUSH_INTERFACE	OFONO_SERVICE ".PushNotification"
 #define OFONO_AGENT_INTERFACE	OFONO_SERVICE ".PushNotificationAgent"
 
@@ -44,11 +45,13 @@ struct modem_data {
 	char *path;
 	DBusConnection *conn;
 	gboolean has_sim;
+	gboolean has_gprs;
 	gboolean has_push;
 	gboolean has_agent;
 	struct mms_service *service;
 	dbus_bool_t sim_present;
 	char *sim_identity;
+	dbus_bool_t gprs_attached;
 };
 
 static GHashTable *modem_list;
@@ -214,6 +217,8 @@ static void check_sim_present(struct modem_data *modem, DBusMessageIter *iter)
 
 	modem->sim_present = present;
 
+	DBG("SIM present %d", modem->sim_present);
+
 	if (modem->sim_identity == NULL)
 		return;
 
@@ -267,7 +272,7 @@ static gboolean sim_changed(DBusConnection *connection,
 
 	if (g_str_equal(key, "Present") == TRUE)
 		check_sim_present(modem, &value);
-	if (g_str_equal(key, "SubscriberIdentity") == TRUE)
+	else if (g_str_equal(key, "SubscriberIdentity") == TRUE)
 		check_sim_identity(modem, &value);
 
 	return TRUE;
@@ -349,10 +354,126 @@ static int get_sim_properties(struct modem_data *modem)
 	return 0;
 }
 
+static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
+{
+	dbus_bool_t attached;
+
+	dbus_message_iter_get_basic(iter, &attached);
+
+	if (modem->gprs_attached == attached)
+		return;
+
+	modem->gprs_attached = attached;
+
+	DBG("GPRS attached %d", modem->gprs_attached);
+}
+
+static gboolean gprs_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *path, *key;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	path = dbus_message_get_path(message);
+
+	modem = g_hash_table_lookup(modem_list, path);
+	if (modem == NULL)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Attached") == TRUE)
+		check_gprs_attached(modem, &value);
+
+	return TRUE;
+}
+
+static void get_gprs_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessageIter iter, dict;
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE) {
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, "a{sv}") == FALSE)
+		goto done;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Attached") == TRUE)
+			check_gprs_attached(modem, &value);
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int get_gprs_properties(struct modem_data *modem)
+{
+	DBusConnection *conn = modem->conn;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+					OFONO_GPRS_INTERFACE, "GetProperties");
+	if (msg == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL)
+		return -EINVAL;
+
+	dbus_pending_call_set_notify(call, get_gprs_properties_reply,
+							modem, NULL);
+
+	dbus_pending_call_unref(call);
+
+	return 0;
+}
+
 static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 {
 	DBusMessageIter entry;
 	gboolean has_sim = FALSE;
+	gboolean has_gprs = FALSE;
 	gboolean has_push = FALSE;
 
 	dbus_message_iter_recurse(iter, &entry);
@@ -364,6 +485,8 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 
 		if (g_str_equal(interface, OFONO_SIM_INTERFACE) == TRUE)
 			has_sim = TRUE;
+		else if (g_str_equal(interface, OFONO_GPRS_INTERFACE) == TRUE)
+			has_gprs = TRUE;
 		else if (g_str_equal(interface, OFONO_PUSH_INTERFACE) == TRUE)
 			has_push = TRUE;
 
@@ -382,8 +505,23 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 			modem->sim_identity = NULL;
 
 			modem->sim_present = FALSE;
+
+			DBG("SIM present %d", modem->sim_present);
 		} else
 			get_sim_properties(modem);
+	}
+
+	if (modem->has_gprs != has_gprs) {
+		modem->has_gprs = has_gprs;
+
+		DBG("path %s gprs %d", modem->path, modem->has_gprs);
+
+		if (modem->has_gprs == FALSE) {
+			modem->gprs_attached = FALSE;
+
+			DBG("GPRS attached %d", modem->gprs_attached);
+		} else
+			get_gprs_properties(modem);
 	}
 
 	if (modem->has_push != has_push) {
@@ -415,6 +553,7 @@ static void create_modem(DBusConnection *conn,
 	modem->conn = dbus_connection_ref(conn);
 
 	modem->has_sim = FALSE;
+	modem->has_gprs = FALSE;
 	modem->has_push = FALSE;
 	modem->has_agent = FALSE;
 
@@ -579,6 +718,7 @@ static guint modem_added_watch;
 static guint modem_removed_watch;
 static guint modem_changed_watch;
 static guint sim_changed_watch;
+static guint gprs_changed_watch;
 
 static void ofono_connect(DBusConnection *conn, void *user_data)
 {
@@ -604,6 +744,10 @@ static void ofono_connect(DBusConnection *conn, void *user_data)
 	sim_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
 				OFONO_SIM_INTERFACE, "PropertyChanged",
 						sim_changed, NULL, NULL);
+
+	gprs_changed_watch = g_dbus_add_signal_watch(conn, NULL, NULL,
+				OFONO_GPRS_INTERFACE, "PropertyChanged",
+						gprs_changed, NULL, NULL);
 
 	get_modems(conn);
 }
@@ -632,6 +776,11 @@ static void ofono_disconnect(DBusConnection *conn, void *user_data)
 	if (sim_changed_watch > 0) {
 		g_dbus_remove_watch(conn, sim_changed_watch);
 		sim_changed_watch = 0;
+	}
+
+	if (gprs_changed_watch > 0) {
+		g_dbus_remove_watch(conn, gprs_changed_watch);
+		gprs_changed_watch = 0;
 	}
 
 	g_hash_table_destroy(modem_list);
