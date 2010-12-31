@@ -60,6 +60,19 @@ void mms_push_notify(unsigned char *pdu, unsigned int len)
 	unsigned int nread;
 	unsigned int consumed;
 	struct mms_message msg;
+	unsigned int i;
+	GString *hex;
+
+	DBG("pdu %p len %d", pdu, len);
+
+	hex = g_string_sized_new(len * 2);
+
+	for (i = 0; i < len; i++)
+		g_string_append_printf(hex, "%02X", pdu[i]);
+
+	DBG("%s", hex->str);
+
+	g_string_free(hex, TRUE);
 
 	/* PUSH pdu ? */
 	if (pdu[1] != 0x06)
