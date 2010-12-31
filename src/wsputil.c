@@ -281,6 +281,14 @@ unsigned char wsp_header_iter_get_code_page(struct wsp_header_iter *iter)
 	return iter->code_page;
 }
 
+gboolean wsp_header_iter_at_end(struct wsp_header_iter *iter)
+{
+	if (iter->pos == iter->max)
+		return TRUE;
+
+	return FALSE;
+}
+
 enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter)
 {
 	return iter->header_type;
