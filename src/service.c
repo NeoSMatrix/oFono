@@ -34,6 +34,7 @@ struct mms_service {
 	gint refcount;
 	char *identity;
 	char *path;
+	char *mmsc;
 };
 
 static GList *service_list = NULL;
@@ -78,6 +79,8 @@ void mms_service_unref(struct mms_service *service)
 		return;
 
 	DBG("service %p", service);
+
+	g_free(service->mmsc);
 
 	g_free(service->identity);
 	g_free(service->path);
@@ -197,6 +200,19 @@ int mms_service_set_identity(struct mms_service *service,
 
 	g_free(service->identity);
 	service->identity = g_strdup(identity);
+
+	return 0;
+}
+
+int mms_service_set_mmsc(struct mms_service *service, const char *mmsc)
+{
+	DBG("service %p mmsc %s", service, mmsc);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	g_free(service->mmsc);
+	service->mmsc = g_strdup(mmsc);
 
 	return 0;
 }
