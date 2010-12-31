@@ -673,6 +673,13 @@ static int get_contexts(struct modem_data *modem)
 	return 0;
 }
 
+static int bearer_handler(struct mms_service *service, mms_bool_t active)
+{
+	DBG("service %p active %d", service, active);
+
+	return 0;
+}
+
 static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
 {
 	dbus_bool_t attached;
@@ -693,7 +700,10 @@ static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
 		modem->context_active = FALSE;
 
 		DBG("Context active %d", modem->context_active);
-	}
+
+		mms_service_set_bearer_handler(modem->service, NULL);
+	} else
+		mms_service_set_bearer_handler(modem->service, bearer_handler);
 }
 
 static gboolean gprs_changed(DBusConnection *connection,
@@ -857,6 +867,8 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 			modem->context_active = FALSE;
 
 			DBG("Context active %d", modem->context_active);
+
+			mms_service_set_bearer_handler(modem->service, NULL);
 		} else
 			get_gprs_properties(modem);
 	}
