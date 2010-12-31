@@ -55,6 +55,8 @@ struct modem_data {
 	dbus_bool_t gprs_attached;
 	char *context_path;
 	dbus_bool_t context_active;
+	char *context_interface;
+	char *context_proxy;
 };
 
 static GHashTable *modem_list;
@@ -149,6 +151,8 @@ static void remove_modem(gpointer data)
 	dbus_connection_unref(modem->conn);
 
 	g_free(modem->context_path);
+	g_free(modem->context_interface);
+	g_free(modem->context_proxy);
 
 	g_free(modem->sim_identity);
 
@@ -372,6 +376,73 @@ static void check_context_active(struct modem_data *modem,
 	modem->context_active = active;
 
 	DBG("Context active %d", modem->context_active);
+
+	if (modem->context_active == FALSE) {
+		g_free(modem->context_interface);
+		modem->context_interface = NULL;
+
+		g_free(modem->context_proxy);
+		modem->context_proxy = NULL;
+
+		mms_service_bearer_notify(modem->service, FALSE, NULL, NULL);
+	} else if (modem->context_proxy != NULL)
+		mms_service_bearer_notify(modem->service, TRUE,
+						modem->context_interface,
+						modem->context_proxy);
+}
+
+static void check_context_settings(struct modem_data *modem,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+
+	g_free(modem->context_interface);
+	modem->context_interface = NULL;
+
+	g_free(modem->context_proxy);
+	modem->context_proxy = NULL;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			const char *str;
+
+			dbus_message_iter_get_basic(&value, &str);
+
+			g_free(modem->context_interface);
+			modem->context_interface = g_strdup(str);
+		} else if (g_str_equal(key, "Proxy") == TRUE) {
+			const char *str;
+
+			dbus_message_iter_get_basic(&value, &str);
+
+			g_free(modem->context_proxy);
+			modem->context_proxy = g_strdup(str);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	if (modem->context_active == FALSE)
+		return;
+
+	mms_service_bearer_notify(modem->service, TRUE,
+					modem->context_interface,
+					modem->context_proxy);
 }
 
 static void create_context(struct modem_data *modem,
@@ -407,6 +478,8 @@ static void create_context(struct modem_data *modem,
 			DBG("path %s", modem->context_path);
 		} else if (g_str_equal(key, "Active") == TRUE)
 			check_context_active(modem, &value);
+		else if (g_str_equal(key, "Settings") == TRUE)
+			check_context_settings(modem, &value);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -503,6 +576,8 @@ static gboolean context_changed(DBusConnection *connection,
 
 	if (g_str_equal(key, "Active") == TRUE)
 		check_context_active(modem, &value);
+	else if (g_str_equal(key, "Settings") == TRUE)
+		check_context_settings(modem, &value);
 
 	return TRUE;
 }
