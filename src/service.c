@@ -35,6 +35,7 @@ struct mms_service {
 	char *identity;
 	char *path;
 	char *mmsc;
+	mms_service_bearer_handler_func_t bearer_handler;
 };
 
 static GList *service_list = NULL;
@@ -213,6 +214,19 @@ int mms_service_set_mmsc(struct mms_service *service, const char *mmsc)
 
 	g_free(service->mmsc);
 	service->mmsc = g_strdup(mmsc);
+
+	return 0;
+}
+
+int mms_service_set_bearer_handler(struct mms_service *service,
+				mms_service_bearer_handler_func_t handler)
+{
+	DBG("service %p handler %p", service, handler);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	service->bearer_handler = handler;
 
 	return 0;
 }
