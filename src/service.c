@@ -264,6 +264,8 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 	return 0;
 }
 
+static void process_request_queue(struct mms_service *service);
+
 static gboolean bearer_setup_timeout(gpointer user_data)
 {
 	struct mms_service *service = user_data;
@@ -284,18 +286,15 @@ static void activate_bearer(struct mms_service *service)
 	if (service->bearer_setup == TRUE)
 		return;
 
-	if (service->bearer_active == TRUE)
+	if (service->bearer_active == TRUE) {
+		process_request_queue(service);
 		return;
+	}
 
 	if (service->bearer_handler == NULL)
 		return;
 
 	DBG("service %p", service);
-
-	if (service->bearer_timeout > 0) {
-		g_source_remove(service->bearer_timeout);
-		service->bearer_timeout = 0;
-	}
 
 	service->bearer_setup = TRUE;
 
@@ -339,6 +338,31 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	deactivate_bearer(service);
 
 	return FALSE;
+}
+
+static void process_request_queue(struct mms_service *service)
+{
+	struct download_request *request;
+
+	DBG("service %p", service);
+
+	if (service->bearer_timeout > 0) {
+		g_source_remove(service->bearer_timeout);
+		service->bearer_timeout = 0;
+	}
+
+	while (1) {
+		request = g_queue_pop_head(service->request_queue);
+		if (request == NULL)
+			break;
+
+		DBG("location %s", request->location);
+
+		download_request_destroy(request);
+	}
+
+	service->bearer_timeout = g_timeout_add_seconds(BEARER_IDLE_TIMEOUT,
+						bearer_idle_timeout, service);
 }
 
 void mms_service_push_notify(struct mms_service *service,
@@ -388,8 +412,7 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 
 	DBG("interface %s proxy %s", interface, proxy);
 
-	service->bearer_timeout = g_timeout_add_seconds(BEARER_IDLE_TIMEOUT,
-						bearer_idle_timeout, service);
+	process_request_queue(service);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
