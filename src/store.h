@@ -19,27 +19,4 @@
  *
  */
 
-#include <glib.h>
-
-#include "log.h"
-
-int __mms_log_init(const char *debug, gboolean detach);
-void __mms_log_cleanup(void);
-
-#include "plugin.h"
-
-int __mms_plugin_init(void);
-void __mms_plugin_cleanup(void);
-
-#include "dbus.h"
-
-void __mms_dbus_set_connection(DBusConnection *conn);
-
-#include "service.h"
-
-int __mms_service_init(void);
-void __mms_service_cleanup(void);
-
-#include "push.h"
-
-#include "store.h"
+void mms_store(unsigned char *pdu, unsigned int len);
