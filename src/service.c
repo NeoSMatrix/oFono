@@ -234,9 +234,17 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
+	char *location;
+
 	DBG("service %p data %p len %d", service, data, len);
 
-	mms_push_notify(data, len);
+	location = mms_push_notify(data, len);
+	if (location == NULL)
+		return;
+
+	DBG("location %s", location);
+
+	g_free(location);
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
