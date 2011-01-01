@@ -30,12 +30,18 @@
 
 #include "mms.h"
 
+#define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
+
 struct mms_service {
 	gint refcount;
 	char *identity;
 	char *path;
 	char *mmsc;
 	mms_service_bearer_handler_func_t bearer_handler;
+	void *bearer_data;
+	guint bearer_timeout;
+	gboolean bearer_setup;
+	gboolean bearer_active;
 	GQueue *request_queue;
 };
 
@@ -243,7 +249,8 @@ int mms_service_set_mmsc(struct mms_service *service, const char *mmsc)
 }
 
 int mms_service_set_bearer_handler(struct mms_service *service,
-				mms_service_bearer_handler_func_t handler)
+				mms_service_bearer_handler_func_t handler,
+							void *user_data)
 {
 	DBG("service %p handler %p", service, handler);
 
@@ -251,8 +258,45 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 		return -EINVAL;
 
 	service->bearer_handler = handler;
+	service->bearer_data = user_data;
 
 	return 0;
+}
+
+static gboolean bearer_setup_timeout(gpointer user_data)
+{
+	struct mms_service *service = user_data;
+
+	DBG("service %p", service);
+
+	service->bearer_timeout = 0;
+
+	service->bearer_setup = FALSE;
+
+	return FALSE;
+}
+
+static void activate_bearer(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	if (service->bearer_setup == TRUE)
+		return;
+
+	if (service->bearer_active == TRUE)
+		return;
+
+	if (service->bearer_handler == NULL)
+		return;
+
+	DBG("service %p", service);
+
+	service->bearer_setup = TRUE;
+
+	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
+						bearer_setup_timeout, service);
+
+	service->bearer_handler(TRUE, service->bearer_data);
 }
 
 void mms_service_push_notify(struct mms_service *service,
@@ -276,12 +320,26 @@ void mms_service_push_notify(struct mms_service *service,
 	request->location = location;
 
 	g_queue_push_tail(service->request_queue, request);
+
+	activate_bearer(service);
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 				const char *interface, const char *proxy)
 {
 	DBG("service %p active %d", service, active);
+
+	if (service == NULL)
+		return;
+
+	if (service->bearer_timeout > 0) {
+		g_source_remove(service->bearer_timeout);
+		service->bearer_timeout = 0;
+	}
+
+	service->bearer_setup = FALSE;
+
+	service->bearer_active = active;
 
 	if (active == FALSE)
 		return;
