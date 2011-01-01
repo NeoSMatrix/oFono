@@ -50,7 +50,7 @@ static void dump_notification_ind(struct mms_message *msg)
 	mms_info("Location: %s\n", msg->ni.location);
 }
 
-void mms_push_notify(unsigned char *pdu, unsigned int len)
+char *mms_push_notify(unsigned char *pdu, unsigned int len)
 {
 	unsigned int headerslen;
 	unsigned int content_len;
@@ -60,6 +60,7 @@ void mms_push_notify(unsigned char *pdu, unsigned int len)
 	unsigned int nread;
 	unsigned int consumed;
 	struct mms_message msg;
+	char *result;
 	unsigned int i;
 	GString *hex;
 
@@ -76,14 +77,14 @@ void mms_push_notify(unsigned char *pdu, unsigned int len)
 
 	/* PUSH pdu ? */
 	if (pdu[1] != 0x06)
-		return;
+		return NULL;
 
 	/* Consume TID and Type */
 	nread = 2;
 
 	if (wsp_decode_uintvar(pdu + nread, len,
 					&headerslen, &consumed) != TRUE)
-		return;
+		return NULL;
 
 	/* Consume uintvar bytes */
 	nread += consumed;
@@ -91,36 +92,43 @@ void mms_push_notify(unsigned char *pdu, unsigned int len)
 	/* Try to decode content-type */
 	if (wsp_decode_field(pdu + nread, headerslen, &content_type,
 				&content_data, &content_len, &consumed) != TRUE)
-		return;
+		return NULL;
 
 	/* Consume Content Type bytes */
 	nread += consumed;
 
 	if (content_type != WSP_VALUE_TYPE_TEXT)
-		return;
+		return NULL;
 
 	if (g_str_equal(content_data, MMS_CONTENT_TYPE) == FALSE)
-		return;
+		return NULL;
 
 	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
 	while (wsp_header_iter_next(&iter));
 
 	if (wsp_header_iter_at_end(&iter) == FALSE)
-		return;
+		return NULL;
 
 	nread += headerslen - consumed;
 
 	mms_info("Body Length: %d\n", len - nread);
 
-	if (mms_message_decode(pdu + nread, len - nread, &msg) == FALSE)
-		goto error;
+	if (mms_message_decode(pdu + nread, len - nread, &msg) == FALSE) {
+		mms_message_free(&msg);
+		return NULL;
+	}
 
-	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
-		goto error;
+	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND) {
+		mms_message_free(&msg);
+		return NULL;
+	}
 
 	dump_notification_ind(&msg);
 
-error:
+	result = g_strdup(msg.ni.location);
+
 	mms_message_free(&msg);
+
+	return result;
 }

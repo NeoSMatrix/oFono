@@ -19,4 +19,4 @@
  *
  */
 
-void mms_push_notify(unsigned char *pdu, unsigned int len);
+char *mms_push_notify(unsigned char *pdu, unsigned int len);
