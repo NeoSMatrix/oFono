@@ -114,6 +114,8 @@ char *mms_push_notify(unsigned char *pdu, unsigned int len)
 
 	mms_info("Body Length: %d\n", len - nread);
 
+	mms_store(pdu + nread, len - nread);
+
 	if (mms_message_decode(pdu + nread, len - nread, &msg) == FALSE) {
 		mms_message_free(&msg);
 		return NULL;
