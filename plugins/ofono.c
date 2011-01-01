@@ -30,6 +30,7 @@
 
 #include "plugin.h"
 #include "log.h"
+#include "dbus.h"
 #include "service.h"
 
 #define OFONO_SERVICE		"org.ofono"
@@ -673,11 +674,83 @@ static int get_contexts(struct modem_data *modem)
 	return 0;
 }
 
-static int bearer_handler(struct mms_service *service, mms_bool_t active)
+static void set_context_reply(DBusPendingCall *call, void *user_data)
 {
-	DBG("service %p active %d", service, active);
+	struct modem_data *modem = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE) {
+		dbus_error_free(&err);
+		mms_service_bearer_notify(modem->service, FALSE, NULL, NULL);
+	}
+
+	dbus_message_unref(reply);
+}
+
+static int set_context(struct modem_data *modem, dbus_bool_t active)
+{
+	DBusConnection *conn = modem->conn;
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(OFONO_SERVICE, modem->context_path,
+					OFONO_CONTEXT_INTERFACE, "SetProperty");
+	if (msg == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	mms_dbus_property_append_basic(&iter, "Active",
+					DBUS_TYPE_BOOLEAN, &active);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL)
+		return -EINVAL;
+
+	dbus_pending_call_set_notify(call, set_context_reply, modem, NULL);
+
+	dbus_pending_call_unref(call);
 
 	return 0;
+}
+
+static void bearer_handler(mms_bool_t active, void *user_data)
+{
+	struct modem_data *modem = user_data;
+
+	DBG("path %s active %d", modem->path, active);
+
+	if (active == TRUE && modem->context_active == TRUE) {
+		mms_service_bearer_notify(modem->service, TRUE,
+						modem->context_interface,
+						modem->context_proxy);
+		return;
+	}
+
+	if (active == FALSE && modem->context_active == FALSE) {
+		mms_service_bearer_notify(modem->service, FALSE, NULL, NULL);
+		return;
+	}
+
+	if (modem->gprs_attached == FALSE || modem->context_path == NULL) {
+		mms_service_bearer_notify(modem->service, FALSE, NULL, NULL);
+		return;
+	}
+
+	if (set_context(modem, active == TRUE ? TRUE : FALSE) < 0)
+		mms_service_bearer_notify(modem->service, FALSE, NULL, NULL);
 }
 
 static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
@@ -701,9 +774,10 @@ static void check_gprs_attached(struct modem_data *modem, DBusMessageIter *iter)
 
 		DBG("Context active %d", modem->context_active);
 
-		mms_service_set_bearer_handler(modem->service, NULL);
+		mms_service_set_bearer_handler(modem->service, NULL, NULL);
 	} else
-		mms_service_set_bearer_handler(modem->service, bearer_handler);
+		mms_service_set_bearer_handler(modem->service,
+							bearer_handler, modem);
 }
 
 static gboolean gprs_changed(DBusConnection *connection,
@@ -868,7 +942,8 @@ static void check_interfaces(struct modem_data *modem, DBusMessageIter *iter)
 
 			DBG("Context active %d", modem->context_active);
 
-			mms_service_set_bearer_handler(modem->service, NULL);
+			mms_service_set_bearer_handler(modem->service,
+								NULL, NULL);
 		} else
 			get_gprs_properties(modem);
 	}
