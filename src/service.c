@@ -31,6 +31,7 @@
 #include "mms.h"
 
 #define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
+#define BEARER_IDLE_TIMEOUT	10	/* 10 seconds */
 
 struct mms_service {
 	gint refcount;
@@ -291,12 +292,53 @@ static void activate_bearer(struct mms_service *service)
 
 	DBG("service %p", service);
 
+	if (service->bearer_timeout > 0) {
+		g_source_remove(service->bearer_timeout);
+		service->bearer_timeout = 0;
+	}
+
 	service->bearer_setup = TRUE;
 
 	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
 						bearer_setup_timeout, service);
 
 	service->bearer_handler(TRUE, service->bearer_data);
+}
+
+static void deactivate_bearer(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	if (service->bearer_setup == TRUE)
+		return;
+
+	if (service->bearer_active == FALSE)
+		return;
+
+	if (service->bearer_handler == NULL)
+		return;
+
+	DBG("service %p", service);
+
+	service->bearer_setup = TRUE;
+
+	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
+						bearer_setup_timeout, service);
+
+	service->bearer_handler(FALSE, service->bearer_data);
+}
+
+static gboolean bearer_idle_timeout(gpointer user_data)
+{
+	struct mms_service *service = user_data;
+
+	DBG("service %p", service);
+
+	service->bearer_timeout = 0;
+
+	deactivate_bearer(service);
+
+	return FALSE;
 }
 
 void mms_service_push_notify(struct mms_service *service,
@@ -345,6 +387,9 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 		return;
 
 	DBG("interface %s proxy %s", interface, proxy);
+
+	service->bearer_timeout = g_timeout_add_seconds(BEARER_IDLE_TIMEOUT,
+						bearer_idle_timeout, service);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
