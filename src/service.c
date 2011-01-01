@@ -36,6 +36,11 @@ struct mms_service {
 	char *path;
 	char *mmsc;
 	mms_service_bearer_handler_func_t bearer_handler;
+	GQueue *request_queue;
+};
+
+struct download_request {
+	char *location;
 };
 
 static GList *service_list = NULL;
@@ -46,6 +51,12 @@ static GDBusMethodTable service_methods[] = {
 	{ }
 };
 
+static void download_request_destroy(struct download_request *request)
+{
+	g_free(request->location);
+	g_free(request);
+}
+
 struct mms_service *mms_service_create(void)
 {
 	struct mms_service *service;
@@ -55,6 +66,12 @@ struct mms_service *mms_service_create(void)
 		return NULL;
 
 	service->refcount = 1;
+
+	service->request_queue = g_queue_new();
+	if (service->request_queue == NULL) {
+		g_free(service);
+		return NULL;
+	}
 
 	DBG("service %p", service);
 
@@ -73,6 +90,8 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 
 void mms_service_unref(struct mms_service *service)
 {
+	struct download_request *request;
+
 	if (service == NULL)
 		return;
 
@@ -80,6 +99,11 @@ void mms_service_unref(struct mms_service *service)
 		return;
 
 	DBG("service %p", service);
+
+	while ((request = g_queue_pop_head(service->request_queue)))
+		download_request_destroy(request);
+
+	g_queue_free(service->request_queue);
 
 	g_free(service->mmsc);
 
@@ -234,6 +258,7 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
+	struct download_request *request;
 	char *location;
 
 	DBG("service %p data %p len %d", service, data, len);
@@ -242,9 +267,15 @@ void mms_service_push_notify(struct mms_service *service,
 	if (location == NULL)
 		return;
 
-	DBG("location %s", location);
+	request = g_try_new0(struct download_request, 1);
+	if (request == NULL) {
+		g_free(location);
+		return;
+	}
 
-	g_free(location);
+	request->location = location;
+
+	g_queue_push_tail(service->request_queue, request);
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
