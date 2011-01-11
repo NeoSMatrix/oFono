@@ -1,0 +1,28 @@
+Referencing standards in the source
+===================================
+
+When referencing standard documents use raw numbers xx.xxx for 3GPP
+documents or xxx.xxx for ETSI document (eg: 23.040). If needing to
+point to an specific section/subsection, explicitly say "Section foo"
+
+3GPP specs can be found in http://3gpp.org/ftp/Specs.
+
+For documents from OMA or WAP Forum use the raw numbers with its
+prefix WAP-xxx (eg. WAP-230). If needed use also the abbreviation
+within the reference (eg. WAP-230-WSP).
+
+WAP Forum specs can be found in http://www.wapforum.org/what/technical.htm
+or in http://www.openmobilealliance.org/Technical/wapindex.aspx for the new
+Open Mobile Alliance (OMA) site.
+
+WAP Forum Specification
+=======================
+
+- WAP-230-WSP: Wireless Session Protocol Specification
+
+Describes the WSP encoding that is used for MMS and WAP Push messages.
+
+- WAP-209-MMSEncapsulation: MMS Encapsulation Protocol
+
+Describes the encapsulation of MMS messages using WSP. It also describes
+the usage of HTTP as transport and MIME multipart for message content.
