@@ -56,6 +56,16 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
+AC_CHECK_HEADERS(resolv.h, dummy=yes,
+			AC_MSG_ERROR(resolver header files are required))
+AC_CHECK_LIB(resolv, ns_initparse, dummy=yes, [
+	AC_CHECK_LIB(resolv, __ns_initparse, dummy=yes,
+			AC_MSG_ERROR(resolver library support is required))
+])
+
+AC_CHECK_LIB(dl, dlopen, dummy=yes,
+			AC_MSG_ERROR(dynamic linking loader is required))
+
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))
 AC_SUBST(GLIB_CFLAGS)

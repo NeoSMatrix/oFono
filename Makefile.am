@@ -4,6 +4,9 @@ AM_MAKEFLAGS = --no-print-directory
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
 
+gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
+					gweb/giognutls.h gweb/gionotls.c
+
 builtin_modules =
 builtin_sources =
 builtin_cflags =
@@ -14,14 +17,14 @@ builtin_sources += plugins/ofono.c
 
 libexec_PROGRAMS = src/mmsd
 
-src_mmsd_SOURCES = $(gdbus_sources) $(builtin_sources) \
+src_mmsd_SOURCES = $(gdbus_sources) $(gweb_sources) $(builtin_sources) \
 			src/main.c src/mms.h src/types.h \
 			src/log.h src/log.c src/plugin.h src/plugin.c \
 			src/dbus.h src/dbus.c src/service.h src/service.c \
 			src/push.h src/push.c src/store.h src/store.c \
 			src/wsputil.h src/wsputil.c src/mmsutil.h src/mmsutil.c
 
-src_mmsd_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ -ldl
+src_mmsd_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ -lresolv -ldl
 
 src_mmsd_LDFLAGS = -Wl,--export-dynamic
 
