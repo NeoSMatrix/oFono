@@ -107,8 +107,8 @@ gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 	unsigned int cont;
 
 	for (i = 0, var = 0, cont = TRUE; i < 5 && i < len && cont; i++) {
-		cont = *pdu & 0x80;
-		var = (var << 7) | *pdu;
+		cont = pdu[i] & 0x80;
+		var = (var << 7) | (pdu[i] & 0x7f);
 	}
 
 	if (cont)
