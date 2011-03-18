@@ -1,0 +1,43 @@
+Service hierarchy
+=================
+
+Service		org.ofono.mms
+Interface	org.ofono.mms.Service
+Object path	[variable prefix]/{service0,service1,...}
+
+Methods		array{object,dict} GetMessages()
+
+			Get an array of message objects and properties
+			that represents the currently received and sent
+			messages.
+
+			This method call should only be used once when an
+			service becomes available.  Further message additions
+			and removal shall be monitored via MessageAdded and
+			MessageRemoved signals.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		array{object,dict} GetConversation(string number, uint32 count)
+
+			Get an array of message objects and properties
+			that are part of a conversation between the service
+			entity and the number provided.
+
+			The count parameter can either be 0 for unlimited
+			messages in the conversation or limit the conversation
+			to count last messages.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		MessageAdded(object path, dict properties)
+
+			Signal that is sent when a new message is added.  It
+			contains the object path of new message and also its
+			properties.
+
+		MessageRemoved(object path)
+
+			Signal that is sent when a message has been removed.
+			The object path is no longer accessible after this
+			signal and only emitted for reference.
