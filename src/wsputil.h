@@ -34,6 +34,10 @@ enum wsp_value_type {
 	WSP_VALUE_TYPE_TEXT,
 };
 
+enum wsp_header_token {
+	WSP_HEADER_TOKEN_APP_ID =	0x2F,
+};
+
 struct wsp_header_iter {
 	const unsigned char *pdu;
 	unsigned int max;
@@ -63,6 +67,12 @@ const char *wsp_decode_token_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
 const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
+
+gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
+					const void **out_value,
+					unsigned int *out_read);
+gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
+					const void **out_value);
 
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,

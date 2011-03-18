@@ -29,6 +29,35 @@
 
 #include "wsputil.h"
 
+struct wsp_hex_str_entry {
+	unsigned int type;
+	const char *type_str;
+};
+
+/*
+ * http://www.wapforum.org/wina/wsp-content-type.htm
+ */
+static const struct  wsp_hex_str_entry content_types[] = {
+	{ 0x36, "application/vnd.wap.connectivity-wbxml" },
+	{ 0x3E, "application/vnd.wap.mms-message" },
+	{ 0x44, "application/vnd.syncml.notification" },
+	{ 0x48, "application/vnd.oma.drm.message" },
+	{ 0x49, "application/vnd.oma.drm.content" },
+	{ 0x4A, "application/vnd.oma.drm.rights+xml" },
+	{ 0x4B, "application/vnd.oma.drm.rights+wbxml" },
+	{ 0xFF, NULL }
+};
+
+/*
+ * http://www.wapforum.org/wina/push-app-id.htm
+ */
+static const struct wsp_hex_str_entry app_id[] = {
+	{ 0x04, "x-wap-application:mms.ua" },
+	{ 0x07, "x-wap-application:syncml.dm" },
+	{ 0x08, "x-wap-application:drm.ua" },
+	{ 0xFF, NULL }
+};
+
 /*
  * Control Characters 0-8, 10-31 and 127.  The tab character is omitted
  * since it is included in the sep chars array and the most generic TEXT
@@ -215,6 +244,83 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 
 	if (out_read)
 		*out_read = pdu - begin + len;
+
+	return TRUE;
+}
+
+static const char *get_text_entry(unsigned int value,
+					const struct wsp_hex_str_entry *table)
+{
+	unsigned int i;
+
+	for (i = 0; table[i].type_str != NULL; i++) {
+		if (table[i].type == value)
+			return table[i].type_str;
+	}
+
+	return NULL;
+}
+
+gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
+						const void **out_value,
+						unsigned int *out_read)
+{
+	unsigned int len;
+	const void *data;
+	enum wsp_value_type value_type;
+	unsigned int consumed;
+
+	if (wsp_decode_field(pdu, max, &value_type, &data,
+						&len, &consumed) != TRUE)
+		return FALSE;
+
+	if (value_type == WSP_VALUE_TYPE_LONG)
+		return FALSE;
+
+	if (value_type == WSP_VALUE_TYPE_SHORT) {
+		const unsigned char *pdu_val = data;
+		unsigned int val;
+
+		val = *pdu_val & 0x7f;
+
+		data = get_text_entry(val, content_types);
+	}
+
+	if (out_value)
+		*out_value = data;
+
+	if (out_read)
+		*out_read = consumed;
+
+	return TRUE;
+}
+
+gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
+							const void **out_value)
+{
+	const unsigned char *pdu_val = wsp_header_iter_get_val(iter);
+	unsigned int val;
+	unsigned int val_len;
+	unsigned int i;
+
+	/*
+	 * Well-known field values MUST be encoded using the
+	 * compact binary formats
+	 */
+	if (wsp_header_iter_get_val_type(iter) == WSP_VALUE_TYPE_SHORT) {
+		val = *pdu_val & 0x7f;
+	} else {
+		val_len = wsp_header_iter_get_val_len(iter);
+
+		if (val_len > 2)
+			return FALSE;
+
+		for (i = 0, val = 0; i < val_len && i < sizeof(val); i++)
+			val = (val << 8) | pdu_val[i];
+	}
+
+	if (out_value)
+		*out_value = get_text_entry(val, app_id);
 
 	return TRUE;
 }
