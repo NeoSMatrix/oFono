@@ -1,0 +1,50 @@
+Message hierarchy
+=================
+
+Service		org.ofono.mms
+Interface	org.ofono.mms.Message
+Object path	[variable prefix]/{message0,message1,...}
+
+Methods		void MarkRead()
+
+			Change the status of an incoming message to read.
+
+			This is only supported for incoming messages and is
+			meant as user interface driven action.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void Delete()
+
+			Delete this messages from storage.
+
+			When deleting a message a MessageRemove will be
+			triggered.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+			The only expected property change is for the
+			message status.
+
+Properties	string Status [readonly]
+
+			The status of the message.  Possible values are
+			"received", "read", "sent" and "draft".
+
+		string Date [readonly]
+
+			The date of the message. Either when it was
+			received or sent.
+
+		string Subject [readonly, optional]
+
+			Contains the optional subject of a MMS.
+
+		array{string} Numbers [readonly]
+
+			Either numbers of sender or destination.

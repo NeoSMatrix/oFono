@@ -47,7 +47,8 @@ CLEANFILES = src/builtin.h
 
 test_scripts = test/monitor-mms test/get-services
 
-doc_files = doc/architecture.txt doc/manager-api.txt doc/service-api.txt
+doc_files = doc/architecture.txt doc/manager-api.txt doc/service-api.txt \
+							doc/message-api.txt
 
 EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files)
 

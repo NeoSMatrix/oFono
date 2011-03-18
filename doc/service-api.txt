@@ -30,6 +30,20 @@ Methods		array{object,dict} GetMessages()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		object SendMessage(array{string} numbers, array{byte} smil,
+						array{string id,string file})
+
+			Send a new message to numbers with SMIL body and
+			list of attachement identifiers and filenames.
+
+			On success a message object will be created and
+			also signaled by MessageAdded signal.
+
+			The initial status of the message is a draft and
+			and will be updated once sending has succeeded.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 Signals		MessageAdded(object path, dict properties)
 
 			Signal that is sent when a new message is added.  It
