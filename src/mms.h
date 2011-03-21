@@ -42,4 +42,7 @@ void __mms_service_cleanup(void);
 
 #include "push.h"
 
+int __mms_push_config_files_init(void);
+void __mms_push_config_files_cleanup(void);
+
 #include "store.h"
