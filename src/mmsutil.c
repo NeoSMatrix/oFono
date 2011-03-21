@@ -149,7 +149,7 @@ static gboolean extract_absolute_relative_date(struct wsp_header_iter *iter,
 	if (p[0] != 128 && p[0] != 129)
 		return FALSE;
 
-	for (i = 1, seconds = 0; i < l; i++)
+	for (i = 2, seconds = 0; i < l; i++)
 		seconds = seconds << 8 | p[i];
 
 	if (p[0] == 129) {
