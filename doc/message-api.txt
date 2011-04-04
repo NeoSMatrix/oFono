@@ -45,6 +45,24 @@ Properties	string Status [readonly]
 
 			Contains the optional subject of a MMS.
 
-		array{string} Numbers [readonly]
+		string Sender [readonly, optional]
 
-			Either numbers of sender or destination.
+			Number of sender.
+
+		array{string} Recipients [readonly]
+
+			Numbers of recipients.
+
+		string StorageFilename [readonly]
+
+			Storage filename.
+
+		array{byte} Smil [readonly, optional]
+
+			SMIL body.
+
+		array{string ct,string id,uint64 offset,uint64 len}
+						Parts [readonly, optional]
+
+			List of attachement content types, identifiers, offset
+			and length of data in the stored file.
