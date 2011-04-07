@@ -517,5 +517,32 @@ gboolean mms_message_decode(const unsigned char *pdu,
 
 void mms_message_free(struct mms_message *msg)
 {
+	switch (msg->type) {
+	case MMS_MESSAGE_TYPE_SEND_REQ:
+		break;
+	case MMS_MESSAGE_TYPE_SEND_CONF:
+		break;
+	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+		g_free(msg->ni.from);
+		g_free(msg->ni.subject);
+		g_free(msg->ni.cls);
+		g_free(msg->ni.location);
+		break;
+	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
+		break;
+	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
+		g_free(msg->rc.from);
+		g_free(msg->rc.to);
+		g_free(msg->rc.subject);
+		g_free(msg->rc.cls);
+		g_free(msg->rc.priority);
+		g_free(msg->rc.msgid);
+		break;
+	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
+		break;
+	case MMS_MESSAGE_TYPE_DELIVERY_IND:
+		break;
+	}
+
 	g_free(msg->transaction_id);
 }
