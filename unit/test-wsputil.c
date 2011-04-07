@@ -99,6 +99,29 @@ static const unsigned char push2[] = {
 				0x37, 0x54, 0x48, 0x75, 0x00
 };
 
+static const unsigned char push3[] = {
+				0x4C, 0x06, 0x03, 0xCB, 0xAF, 0x88,
+				0x03, 0x0E, 0x6A, 0x00, 0xC5, 0x05, 0x85, 0x06,
+				0x86, 0x07, 0x87, 0x01, 0x46, 0x47, 0x03, 0x31,
+				0x2E, 0x30, 0x00, 0x01, 0x01, 0x49, 0x4A, 0x46,
+				0x48, 0x03, 0x63, 0x69, 0x64, 0x3A, 0x32, 0x30,
+				0x30, 0x35, 0x40, 0x67, 0x72, 0x61, 0x6E, 0x6A,
+				0x65, 0x2E, 0x63, 0x6F, 0x6D, 0x00, 0x01, 0x01,
+				0x4B, 0x4C, 0xC3, 0x10, 0xF1, 0xF7, 0x7C, 0x37,
+				0x95, 0xD3, 0x39, 0x65, 0x84, 0x1E, 0x4A, 0x27,
+				0xA6, 0xC2, 0x71, 0xDB, 0x01, 0x01, 0x01, 0x4D,
+				0x4F, 0x52, 0x53, 0x03, 0x32, 0x00, 0x01, 0x01,
+				0x01, 0x01, 0x01, 0x01
+};
+
+static const unsigned char push4[] = {
+				0xB7, 0x06, 0x03, 0xC4, 0xAF, 0x87,
+				0x00, 0xEF, 0xC4, 0x29, 0x75, 0x46, 0xCA, 0xD6,
+				0xC5, 0x51, 0x08, 0xF1, 0x60, 0xBD, 0xB8, 0x00,
+				0x03, 0x38, 0x00, 0x00, 0x00, 0x00, 0x48, 0x08,
+				0x66, 0x75, 0x6E, 0x61, 0x6D, 0x62, 0x6F, 0x6C
+};
+
 struct push_test {
 	const unsigned char *pdu;
 	unsigned int len;
@@ -114,14 +137,22 @@ static const struct push_test push_test_2 = {
 	.len = sizeof(push2),
 };
 
+static const struct push_test push_test_3 = {
+	.pdu = push3,
+	.len = sizeof(push3),
+};
+
+static const struct push_test push_test_4 = {
+	.pdu = push4,
+	.len = sizeof(push4),
+};
+
 static void test_decode_push(gconstpointer data)
 {
 	const struct push_test *test = data;
 	const unsigned char *pdu = test->pdu;
 	unsigned int len = test->len;
 	unsigned int headerslen;
-	unsigned int content_len;
-	enum wsp_value_type content_type;
 	const void *content_data;
 	struct wsp_header_iter iter;
 	gboolean ret;
@@ -146,16 +177,14 @@ static void test_decode_push(gconstpointer data)
 		g_print("Push Content + Header Length: %d\n", headerslen);
 	}
 
-	ret = wsp_decode_field(pdu + nread, headerslen, &content_type,
-				&content_data, &content_len, &consumed);
+	ret = wsp_decode_content_type(pdu + nread, headerslen, &content_data,
+								&consumed);
 	g_assert(ret == TRUE);
 
 	/* Consume Content Type bytes */
 	nread += consumed;
 
-	g_print("Content-Type: ");
-
-	dump_field(content_type, content_data, content_len);
+	g_print("Content-Type: %s\n", (const char *) content_data);
 
 	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
@@ -163,12 +192,17 @@ static void test_decode_push(gconstpointer data)
 		const void *hdr = wsp_header_iter_get_hdr(&iter);
 		const void *val = wsp_header_iter_get_val(&iter);
 		const unsigned char *wk;
+		const void *urn;
 
 		g_print("Header: ");
 		switch (wsp_header_iter_get_hdr_type(&iter)) {
 		case WSP_HEADER_TYPE_WELL_KNOWN:
 			wk = hdr;
 			g_print("Well known %x\n", wk[0] & 0x7f);
+			if ((wk[0] & 0x7f) == WSP_HEADER_TOKEN_APP_ID) {
+				wsp_decode_application_id(&iter, &urn);
+				g_print("app_id=%s\n", (const char *)urn);
+			}
 			break;
 		case WSP_HEADER_TYPE_APPLICATION:
 			g_print("Application: %s\n", (const char *) hdr);
@@ -190,6 +224,10 @@ int main(int argc, char **argv)
 	g_test_add_data_func("/wsputil/Decode Push 1", &push_test_1,
 				test_decode_push);
 	g_test_add_data_func("/wsputil/Decode Push 2", &push_test_2,
+				test_decode_push);
+	g_test_add_data_func("/wsputil/Decode Push 3", &push_test_3,
+				test_decode_push);
+	g_test_add_data_func("/wsputil/Decode Push 4", &push_test_4,
 				test_decode_push);
 
 	return g_test_run();
