@@ -81,24 +81,57 @@ static gboolean extract_short(struct wsp_header_iter *iter, void *user)
 	return TRUE;
 }
 
-static gboolean extract_text(struct wsp_header_iter *iter, void *user)
+static const char *decode_text(struct wsp_header_iter *iter)
 {
-	char **out = user;
 	const unsigned char *p;
 	unsigned int l;
-	const char *text;
 
 	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_TEXT)
-		return FALSE;
+		return NULL;
 
 	p = wsp_header_iter_get_val(iter);
 	l = wsp_header_iter_get_val_len(iter);
 
-	text = wsp_decode_text(p, l, NULL);
+	return wsp_decode_text(p, l, NULL);
+}
+
+static gboolean extract_text(struct wsp_header_iter *iter, void *user)
+{
+	char **out = user;
+	const char *text;
+
+	text = decode_text(iter);
 	if (text == NULL)
 		return FALSE;
 
 	*out = g_strdup(text);
+
+	return TRUE;
+}
+
+static gboolean extract_text_array_element(struct wsp_header_iter *iter,
+						void *user)
+{
+	char **out = user;
+	const char *element;
+	char *tmp;
+
+	element = decode_text(iter);
+	if (element == NULL)
+		return FALSE;
+
+	if (*out == NULL) {
+		*out = g_strdup(element);
+		return TRUE;
+	}
+
+	tmp = g_strjoin(",", *out, element, NULL);
+	if (tmp == NULL)
+		return FALSE;
+
+	g_free(*out);
+
+	*out = tmp;
 
 	return TRUE;
 }
@@ -335,7 +368,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_SUBJECT:
 		return extract_text;
 	case MMS_HEADER_TO:
-		return extract_text;
+		return extract_text_array_element;
 	case MMS_HEADER_TRANSACTION_ID:
 		return NULL;
 	case MMS_HEADER_INVALID:
@@ -388,8 +421,9 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		if (entries[h].data == NULL)
 			continue;
 
-		/* Skip multiply present headers */
-		if (entries[h].flags & HEADER_FLAG_MARKED)
+		/* Skip multiply present headers except for To */
+		if ((entries[h].flags & HEADER_FLAG_MARKED)
+					&& h != MMS_HEADER_TO)
 			continue;
 
 		handler = handler_for_type(h);
