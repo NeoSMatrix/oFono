@@ -123,6 +123,40 @@ gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 	return TRUE;
 }
 
+gboolean wsp_decode_integer(const unsigned char *pdu, unsigned int len,
+				unsigned int *out_val, unsigned int *consumed)
+{
+	unsigned int var;
+	unsigned int i;
+	unsigned int count;
+
+	if (pdu[0] & 0x80) {
+		var = pdu[0] & 0x7f;
+		count = 1;
+	} else if (pdu[0] <= 30) {
+		unsigned int value_len = *pdu;
+		if (value_len > (len - 1))
+			return FALSE;
+
+		if (value_len > sizeof(unsigned int))
+			return FALSE;
+
+		var = 0;
+		for (i = 0; i < value_len; i++)
+			var = (var << 8) | pdu[i + 1];
+		count = value_len + 1;
+	} else
+		return FALSE;
+
+	if (out_val)
+		*out_val = var;
+
+	if (consumed)
+		*consumed = count;
+
+	return TRUE;
+}
+
 gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 					enum wsp_value_type *out_type,
 					const void **out_value,
