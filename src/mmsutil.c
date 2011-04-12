@@ -32,6 +32,8 @@
 #include "wsputil.h"
 #include "mmsutil.h"
 
+#define uninitialized_var(x) x = x
+
 typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
 
 enum header_flag {
@@ -67,6 +69,33 @@ enum mms_header {
 	__MMS_HEADER_MAX =			0x19,
 	MMS_HEADER_INVALID =			0x80,
 };
+
+/*
+ * IANA Character Set Assignments (examples) used by WAPWSP
+ *
+ * Reference: WAP-230-WSP Appendix Table 42 Character Set Assignment Examples
+ * Reference: IANA http://www.iana.org/assignments/character-sets
+ */
+static const struct {
+	unsigned int mib_enum;
+	const char *charset;
+} charset_assignments[] = {
+	{ 0x03,	"us-ascii"	},
+	{ 0x6A,	"utf-8"		},
+	{ 0x00,	NULL		}
+};
+
+static const char *charset_index2string(unsigned int index)
+{
+	unsigned int i = 0;
+
+	for (i = 0; charset_assignments[i].charset; i++) {
+		if (charset_assignments[i].mib_enum == index)
+			return charset_assignments[i].charset;
+	}
+
+	return NULL;
+}
 
 static gboolean extract_short(struct wsp_header_iter *iter, void *user)
 {
@@ -133,6 +162,71 @@ static gboolean extract_text_array_element(struct wsp_header_iter *iter,
 	g_free(*out);
 
 	*out = tmp;
+
+	return TRUE;
+}
+
+static char *decode_encoded_string_with_mib_enum(const unsigned char *p,
+		unsigned int l)
+{
+	unsigned int mib_enum;
+	unsigned int consumed;
+	const char *text;
+	const char *from_codeset;
+	const char *to_codeset = "UTF-8";
+	gsize bytes_read;
+	gsize bytes_written;
+
+	if (wsp_decode_integer(p, l, &mib_enum, &consumed) == FALSE)
+		return NULL;
+
+	if (mib_enum == 106) {
+		/* header is UTF-8 already */
+		text = wsp_decode_text(p + consumed, l - consumed, NULL);
+
+		return g_strdup(text);
+	}
+
+	/* convert to UTF-8 */
+	from_codeset = charset_index2string(mib_enum);
+	if (from_codeset == NULL)
+		return NULL;
+
+	return g_convert((const char *) p + consumed, l - consumed,
+			to_codeset, from_codeset,
+			&bytes_read, &bytes_written, NULL);
+}
+
+static gboolean extract_encoded_text(struct wsp_header_iter *iter, void *user)
+{
+	char **out = user;
+	const unsigned char *p;
+	unsigned int l;
+	const char *text;
+	char *uninitialized_var(dec_text);
+
+	p = wsp_header_iter_get_val(iter);
+	l = wsp_header_iter_get_val_len(iter);
+
+	switch (wsp_header_iter_get_val_type(iter)) {
+	case WSP_VALUE_TYPE_TEXT:
+		/* Text-string */
+		text = wsp_decode_text(p, l, NULL);
+		dec_text = g_strdup(text);
+		break;
+	case WSP_VALUE_TYPE_LONG:
+		/* (Value-len) Char-set Text-string */
+		dec_text = decode_encoded_string_with_mib_enum(p, l);
+		break;
+	case WSP_VALUE_TYPE_SHORT:
+		dec_text = NULL;
+		break;
+	}
+
+	if (dec_text == NULL)
+		return FALSE;
+
+	*out = dec_text;
 
 	return TRUE;
 }
@@ -325,9 +419,9 @@ static header_handler handler_for_type(enum mms_header header)
 {
 	switch (header) {
 	case MMS_HEADER_BCC:
-		return extract_text;
+		return extract_encoded_text;
 	case MMS_HEADER_CC:
-		return extract_text;
+		return extract_encoded_text;
 	case MMS_HEADER_CONTENT_LOCATION:
 		return extract_text;
 	case MMS_HEADER_CONTENT_TYPE:
@@ -361,13 +455,13 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_RESPONSE_STATUS:
 		return NULL;
 	case MMS_HEADER_RESPONSE_TEXT:
-		return NULL;
+		return extract_encoded_text;
 	case MMS_HEADER_SENDER_VISIBILITY:
 		return NULL;
 	case MMS_HEADER_STATUS:
 		return NULL;
 	case MMS_HEADER_SUBJECT:
-		return extract_text;
+		return extract_encoded_text;
 	case MMS_HEADER_TO:
 		return extract_text_array_element;
 	case MMS_HEADER_TRANSACTION_ID:
