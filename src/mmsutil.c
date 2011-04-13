@@ -512,7 +512,8 @@ gboolean mms_message_decode(const unsigned char *pdu,
 	if (extract_short(&iter, &octet) == FALSE)
 		return FALSE;
 
-	if (octet < 128 || octet > 134)
+	if (octet < MMS_MESSAGE_TYPE_SEND_REQ ||
+			octet > MMS_MESSAGE_TYPE_DELIVERY_IND)
 		return FALSE;
 
 	out->type = octet;
