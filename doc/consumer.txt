@@ -1,0 +1,80 @@
+mmsd consumers design
+*********************
+
+mmsd handles all the SMS WAP Push notifications delivered by oFono. In addition
+to the processing of the MMS WAP Push notifications, it also provides a
+dispatch mechanism for any other kind of WAP Push notifications to the
+registered consumer.
+
+
+Consumer basic
+==============
+
+In order to be identified by mmsd as a specific WAP Push notification consumer,
+a program does not need to register in a sense of having to be running and
+register. It just puts a D-Bus session activation configuration file in place
+and then lets mmsd knows what's the D-Bus service name to call out to. mmsd
+just has to send a D-Bus message to a target daemon and it will activate if
+configured that way.
+
+Each WAP Push notification consumer has to install (in /usr/lib/mms/push.d/
+directory) their configuration file on what types of message they want to
+consume and how they want to consume them. In addition it needs to install the
+appropriate D-Bus session activation configuration file matching the same
+service name (in /usr/share/dbus-1/services/).
+
+
+Consumer configuration file
+===========================
+
+The content of the configuration file is the following, it describes the D-Bus
+interface to be provided by a consumer (acting as a service provider):
+
+[OMA-DM]
+# simple match on the content type
+MatchContentType=application/vnd.syncml.notification
+# match on WAP application id
+MatchPushId=x-wap-application:syncml.dm
+# D-Bus session or system bus
+TargetBus=session
+# D-Bus service name
+TargetService=com.meego.omadm
+# D-Bus target path
+TargetPath=/com/meego/omadm
+# D-Bus target method
+TargetMethod=PushNotify
+
+You can have as many of group (i.e. [OMA-DM]) you want in one file or multiple
+files. They will all be read on mmsd startup and can then be progressed. This
+file must be located in /usr/lib/mms/push.d/ directory, its name extension must
+be ".conf". All keys are mandatory except MatchPushId which is optional.
+See the [PushNotify API] section below for TargetMethod signature details.
+
+
+D-Bus activation service file
+=============================
+
+D-Bus needs a ".service" file to know what program to launch for a given
+service, that file has to be installed in /usr/share/dbus-1/services/.
+
+The content of the service file is the following:
+
+[D-BUS Service]
+Name=com.meego.omadm
+Exec=/usr/bin/omadm_consumer
+
+
+PushNotify API
+==============
+
+Service		unique name (must match the consumer's TargetService)
+Interface	org.ofono.mms
+Object path	freely definable
+
+Method		void PushNotify(array{byte} header, array{byte} body)
+
+			Requests the consumer to process a new WAP Push
+			notification that has arrived containing an appropriate
+			message.
+
+			Possible Errors: None
