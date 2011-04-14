@@ -32,6 +32,10 @@ nodist_src_mmsd_SOURCES = src/builtin.h
 
 plugindir = $(libdir)/mms/plugins
 
+pushconfdir = $(libdir)/mms/push.d
+
+pushconf_DATA =
+
 src/plugin.$(OBJEXT): src/builtin.h
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
@@ -39,7 +43,8 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 
 AM_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(builtin_cflags) \
 					-DMMS_PLUGIN_BUILTIN \
-					-DPLUGINDIR=\""$(plugindir)"\"
+					-DPLUGINDIR=\""$(plugindir)"\" \
+					-DPUSHCONFDIR=\""$(pushconfdir)"\"
 
 INCLUDES = -I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/gdbus
 

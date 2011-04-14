@@ -16,6 +16,8 @@ fi
 
 plugindir="${libdir}/mms/plugins"
 
+pushconfdir="${libdir}/mms/push.d"
+
 PKG_PROG_PKG_CONFIG
 
 COMPILER_FLAGS
