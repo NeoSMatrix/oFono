@@ -392,6 +392,8 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 	va_list args;
 	const unsigned char *p;
 	int i;
+	int expected_version_pos = 1;
+	int version_pos = 0;
 
 	memset(&entries, 0, sizeof(entries));
 
@@ -406,7 +408,7 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 
 	va_end(args);
 
-	while (wsp_header_iter_next(iter)) {
+	for (i = 1; wsp_header_iter_next(iter); i++) {
 		unsigned char h;
 		header_handler handler;
 
@@ -434,8 +436,13 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		if (handler(iter, entries[h].data) == FALSE)
 			return FALSE;
 
+		if (h == MMS_HEADER_TRANSACTION_ID)
+			expected_version_pos += 1;
+		else if (h == MMS_HEADER_MMS_VERSION)
+			version_pos = i;
+
 		/* Parse the header */
-		entries[p[0] & 0x7f].flags |= HEADER_FLAG_MARKED;
+		entries[h].flags |= HEADER_FLAG_MARKED;
 	}
 
 	for (i = 0; i < __MMS_HEADER_MAX + 1; i++) {
@@ -444,13 +451,20 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 			return FALSE;
 	}
 
+	if (version_pos != expected_version_pos)
+		return FALSE;
+
 	return TRUE;
 }
 
 static gboolean decode_notification_ind(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
-	return mms_parse_headers(iter, MMS_HEADER_FROM,
+	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
+				HEADER_FLAG_MANDATORY, &out->transaction_id,
+				MMS_HEADER_MMS_VERSION,
+				HEADER_FLAG_MANDATORY, &out->version,
+				MMS_HEADER_FROM,
 				0, &out->ni.from,
 				MMS_HEADER_SUBJECT,
 				0, &out->ni.subject,
@@ -468,7 +482,11 @@ static gboolean decode_notification_ind(struct wsp_header_iter *iter,
 static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
-	return mms_parse_headers(iter, MMS_HEADER_FROM,
+	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
+				0, &out->transaction_id,
+				MMS_HEADER_MMS_VERSION,
+				HEADER_FLAG_MANDATORY, &out->version,
+				MMS_HEADER_FROM,
 				0, &out->rc.from,
 				MMS_HEADER_TO,
 				0, &out->rc.to,
@@ -518,18 +536,6 @@ gboolean mms_message_decode(const unsigned char *pdu,
 		return FALSE;
 
 	out->type = octet;
-
-	CHECK_WELL_KNOWN_HDR(MMS_HEADER_TRANSACTION_ID);
-
-	if (extract_text(&iter, &out->transaction_id) == FALSE)
-		return FALSE;
-
-	CHECK_WELL_KNOWN_HDR(MMS_HEADER_MMS_VERSION);
-
-	if (extract_short(&iter, &octet) == FALSE)
-		return FALSE;
-
-	out->version = octet & 0x7f;
 
 	switch (out->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
