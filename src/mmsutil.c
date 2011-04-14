@@ -25,6 +25,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <glib.h>
 
@@ -550,6 +551,17 @@ gboolean mms_message_decode(const unsigned char *pdu,
 	return FALSE;
 }
 
+static void free_attachment(gpointer data, gpointer user_data)
+{
+	struct mms_attachment *attach = data;
+
+	g_free(attach->file);
+	g_free(attach->content_type);
+	g_free(attach->content_id);
+
+	g_free(attach);
+}
+
 void mms_message_free(struct mms_message *msg)
 {
 	switch (msg->type) {
@@ -580,4 +592,9 @@ void mms_message_free(struct mms_message *msg)
 	}
 
 	g_free(msg->transaction_id);
+
+	if (msg->attachments != NULL) {
+		g_slist_foreach(msg->attachments, free_attachment, NULL);
+		g_slist_free(msg->attachments);
+	}
 }

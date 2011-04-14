@@ -48,10 +48,19 @@ struct mms_retrieve_conf {
 	time_t date;
 };
 
+struct mms_attachment {
+	char *file;
+	ssize_t offset;
+	ssize_t length;
+	char *content_type;
+	char *content_id;
+};
+
 struct mms_message {
 	enum mms_message_type type;
 	char *transaction_id;
 	unsigned char version;
+	GSList *attachments;
 	union {
 		struct mms_notification_ind ni;
 		struct mms_retrieve_conf rc;

@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
+
 #include <glib.h>
 
 #include "wsputil.h"
