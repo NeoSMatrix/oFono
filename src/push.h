@@ -19,4 +19,5 @@
  *
  */
 
-char *mms_push_notify(unsigned char *pdu, unsigned int len);
+gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
+						unsigned int *offset);

@@ -24,9 +24,12 @@
 #endif
 
 #include <errno.h>
+#include <unistd.h>
 
 #include <glib.h>
 #include <gdbus.h>
+
+#include "mmsutil.h"
 
 #include "mms.h"
 
@@ -365,29 +368,58 @@ static void process_request_queue(struct mms_service *service)
 						bearer_idle_timeout, service);
 }
 
+static void dump_notification_ind(struct mms_message *msg)
+{
+	char buf[128];
+
+	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime(&msg->ni.expiry));
+	buf[127] = '\0';
+
+	mms_info("MMS transaction id: %s\n", msg->transaction_id);
+	mms_info("MMS version: %u.%u\n", (msg->version & 0x70) >> 4,
+						msg->version & 0x0f);
+	mms_info("From: %s\n", msg->ni.from);
+	mms_info("Subject: %s\n", msg->ni.subject);
+	mms_info("Class: %s\n", msg->ni.cls);
+	mms_info("Size: %d\n", msg->ni.size);
+	mms_info("Expiry: %s\n", buf);
+	mms_info("Location: %s\n", msg->ni.location);
+}
+
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
 	struct download_request *request;
-	char *location;
+	struct mms_message msg;
+	unsigned int nread;
 
 	DBG("service %p data %p len %d", service, data, len);
 
-	location = mms_push_notify(data, len);
-	if (location == NULL)
+	if (mms_push_notify(data, len, &nread) == FALSE)
 		return;
+
+	mms_store(data + nread, len - nread);
+
+	if (mms_message_decode(data + nread, len - nread, &msg) == FALSE)
+		goto out;
+
+	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
+		goto out;
+
+	dump_notification_ind(&msg);
 
 	request = g_try_new0(struct download_request, 1);
-	if (request == NULL) {
-		g_free(location);
-		return;
-	}
+	if (request == NULL)
+		goto out;
 
-	request->location = location;
+	request->location = g_strdup(msg.ni.location);
 
 	g_queue_push_tail(service->request_queue, request);
 
 	activate_bearer(service);
+
+out:
+	mms_message_free(&msg);
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,

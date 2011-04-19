@@ -24,12 +24,10 @@
 #endif
 
 #include <errno.h>
-#include <unistd.h>
 
 #include <glib.h>
 
 #include "wsputil.h"
-#include "mmsutil.h"
 
 #include "mms.h"
 
@@ -45,24 +43,6 @@ struct push_consumer {
 };
 
 static GSList *push_consumer_list;
-
-static void dump_notification_ind(struct mms_message *msg)
-{
-	char buf[128];
-
-	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime(&msg->ni.expiry));
-	buf[127] = '\0';
-
-	mms_info("MMS transaction id: %s\n", msg->transaction_id);
-	mms_info("MMS version: %u.%u\n", (msg->version & 0x70) >> 4,
-						msg->version & 0x0f);
-	mms_info("From: %s\n", msg->ni.from);
-	mms_info("Subject: %s\n", msg->ni.subject);
-	mms_info("Class: %s\n", msg->ni.cls);
-	mms_info("Size: %d\n", msg->ni.size);
-	mms_info("Expiry: %s\n", buf);
-	mms_info("Location: %s\n", msg->ni.location);
-}
 
 static void dump_push_consumer(const char *group, struct push_consumer *pc)
 {
@@ -210,7 +190,8 @@ void __mms_push_config_files_cleanup(void)
 	push_consumer_list = NULL;
 }
 
-char *mms_push_notify(unsigned char *pdu, unsigned int len)
+gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
+						unsigned int *offset)
 {
 	unsigned int headerslen;
 	unsigned int content_len;
@@ -219,8 +200,6 @@ char *mms_push_notify(unsigned char *pdu, unsigned int len)
 	struct wsp_header_iter iter;
 	unsigned int nread;
 	unsigned int consumed;
-	struct mms_message msg;
-	char *result;
 	unsigned int i;
 	GString *hex;
 
@@ -237,14 +216,14 @@ char *mms_push_notify(unsigned char *pdu, unsigned int len)
 
 	/* PUSH pdu ? */
 	if (pdu[1] != 0x06)
-		return NULL;
+		return FALSE;
 
 	/* Consume TID and Type */
 	nread = 2;
 
 	if (wsp_decode_uintvar(pdu + nread, len,
 					&headerslen, &consumed) != TRUE)
-		return NULL;
+		return FALSE;
 
 	/* Consume uintvar bytes */
 	nread += consumed;
@@ -252,45 +231,30 @@ char *mms_push_notify(unsigned char *pdu, unsigned int len)
 	/* Try to decode content-type */
 	if (wsp_decode_field(pdu + nread, headerslen, &content_type,
 				&content_data, &content_len, &consumed) != TRUE)
-		return NULL;
+		return FALSE;
 
 	/* Consume Content Type bytes */
 	nread += consumed;
 
 	if (content_type != WSP_VALUE_TYPE_TEXT)
-		return NULL;
+		return FALSE;
 
 	if (g_str_equal(content_data, MMS_CONTENT_TYPE) == FALSE)
-		return NULL;
+		return FALSE;
 
 	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
 	while (wsp_header_iter_next(&iter));
 
 	if (wsp_header_iter_at_end(&iter) == FALSE)
-		return NULL;
+		return FALSE;
 
 	nread += headerslen - consumed;
 
 	mms_info("Body Length: %d\n", len - nread);
 
-	mms_store(pdu + nread, len - nread);
+	if (offset != NULL)
+		*offset = nread;
 
-	if (mms_message_decode(pdu + nread, len - nread, &msg) == FALSE) {
-		mms_message_free(&msg);
-		return NULL;
-	}
-
-	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND) {
-		mms_message_free(&msg);
-		return NULL;
-	}
-
-	dump_notification_ind(&msg);
-
-	result = g_strdup(msg.ni.location);
-
-	mms_message_free(&msg);
-
-	return result;
+return TRUE;
 }
