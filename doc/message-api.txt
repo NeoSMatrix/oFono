@@ -53,9 +53,9 @@ Properties	string Status [readonly]
 
 			Numbers of recipients.
 
-		array{byte} Smil [readonly, optional]
+		string Smil [readonly, optional]
 
-			SMIL body.
+			SMIL body in UTF-8 format.
 
 		array{string id, string content-type, string filename,
 			uint64 offset, uint64 len} Attachments [readonly]
