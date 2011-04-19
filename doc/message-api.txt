@@ -53,16 +53,12 @@ Properties	string Status [readonly]
 
 			Numbers of recipients.
 
-		string StorageFilename [readonly]
-
-			Storage filename.
-
 		array{byte} Smil [readonly, optional]
 
 			SMIL body.
 
-		array{string ct,string id,uint64 offset,uint64 len}
-						Parts [readonly, optional]
+		array{string id, string content-type, string filename,
+			uint64 offset, uint64 len} Attachments [readonly]
 
 			List of attachement content types, identifiers, offset
 			and length of data in the stored file.

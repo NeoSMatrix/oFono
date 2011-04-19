@@ -31,7 +31,8 @@ Methods		array{object,dict} GetMessages()
 			Possible Errors: [service].Error.InvalidArguments
 
 		object SendMessage(array{string} recipients, array{byte} smil,
-				array{string ct,string id,string filename})
+					array{string id, string content-type,
+							string filename})
 
 			Send a new message to recipients with SMIL body and
 			list of attachement content types, identifiers and
