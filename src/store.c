@@ -32,14 +32,29 @@
 
 #include "mms.h"
 
+#define MMS_SHA1_UUID_LEN 20
+
+static const char *digest_to_str(const unsigned char *digest)
+{
+	static char buf[MMS_SHA1_UUID_LEN * 2 + 1];
+	unsigned int i;
+
+	for (i = 0; i < MMS_SHA1_UUID_LEN; i++)
+		sprintf(&buf[i * 2], "%02X", digest[i]);
+
+	buf[MMS_SHA1_UUID_LEN * 2] = 0;
+
+	return buf;
+}
+
 void mms_store(unsigned char *pdu, unsigned int len)
 {
 	GChecksum *checksum;
-	guint8 uuid[20];
-	gsize uuid_size = sizeof(uuid);
+	guint8 digest[MMS_SHA1_UUID_LEN];
+	gsize digest_size = MMS_SHA1_UUID_LEN;
 	GString *pathname;
 	const char *homedir;
-	unsigned int i;
+	const char *uuid;
 	ssize_t size;
 	int fd;
 
@@ -51,7 +66,7 @@ void mms_store(unsigned char *pdu, unsigned int len)
 
 	g_checksum_update(checksum, pdu, len);
 
-	g_checksum_get_digest(checksum, uuid, &uuid_size);
+	g_checksum_get_digest(checksum, digest, &digest_size);
 
 	g_checksum_free(checksum);
 
@@ -63,8 +78,8 @@ void mms_store(unsigned char *pdu, unsigned int len)
 
 	g_string_append(pathname, "/.mms/");
 
-	for (i = 0; i < uuid_size; i++)
-		g_string_append_printf(pathname, "%02X", uuid[i]);
+	uuid = digest_to_str(digest);
+	g_string_append(pathname, uuid);
 
 	DBG("pathname %s", pathname->str);
 
