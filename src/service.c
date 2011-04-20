@@ -517,8 +517,8 @@ int __mms_service_init(void)
 					manager_methods, manager_signals,
 					NULL, NULL, NULL) == FALSE) {
 		mms_error("Failed to register manager interface");
-                return -EIO;
-        }
+		return -EIO;
+	}
 
 	return 0;
 }
