@@ -47,7 +47,7 @@ static const char *digest_to_str(const unsigned char *digest)
 	return buf;
 }
 
-void mms_store(unsigned char *pdu, unsigned int len)
+const char *mms_store(unsigned char *pdu, unsigned int len)
 {
 	GChecksum *checksum;
 	guint8 digest[MMS_SHA1_UUID_LEN];
@@ -62,7 +62,7 @@ void mms_store(unsigned char *pdu, unsigned int len)
 
 	checksum = g_checksum_new(G_CHECKSUM_SHA1);
 	if (checksum == NULL)
-		return;
+		return NULL;
 
 	g_checksum_update(checksum, pdu, len);
 
@@ -72,7 +72,7 @@ void mms_store(unsigned char *pdu, unsigned int len)
 
 	homedir = g_get_home_dir();
 	if (homedir == NULL)
-		return;
+		return NULL;
 
 	pathname = g_string_new(homedir);
 
@@ -86,6 +86,7 @@ void mms_store(unsigned char *pdu, unsigned int len)
 	fd = open(pathname->str, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
 	if (fd < 0) {
 		mms_error("Failed to open %s", pathname->str);
+		uuid = NULL;
 		goto done;
 	}
 
@@ -97,4 +98,6 @@ void mms_store(unsigned char *pdu, unsigned int len)
 
 done:
 	g_string_free(pathname, TRUE);
+
+	return uuid;
 }

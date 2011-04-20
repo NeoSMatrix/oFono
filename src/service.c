@@ -392,13 +392,16 @@ void mms_service_push_notify(struct mms_service *service,
 	struct download_request *request;
 	struct mms_message msg;
 	unsigned int nread;
+	const char *uuid;
 
 	DBG("service %p data %p len %d", service, data, len);
 
 	if (mms_push_notify(data, len, &nread) == FALSE)
 		return;
 
-	mms_store(data + nread, len - nread);
+	uuid = mms_store(data + nread, len - nread);
+	if (uuid == NULL)
+		goto out;
 
 	if (mms_message_decode(data + nread, len - nread, &msg) == FALSE)
 		goto out;
@@ -411,6 +414,8 @@ void mms_service_push_notify(struct mms_service *service,
 	request = g_try_new0(struct download_request, 1);
 	if (request == NULL)
 		goto out;
+
+	msg.uuid = g_strdup(uuid);
 
 	request->location = g_strdup(msg.ni.location);
 
