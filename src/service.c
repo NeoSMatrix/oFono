@@ -399,7 +399,7 @@ void mms_service_push_notify(struct mms_service *service,
 	if (mms_push_notify(data, len, &nread) == FALSE)
 		return;
 
-	uuid = mms_store(data + nread, len - nread);
+	uuid = mms_store(service->identity, data + nread, len - nread);
 	if (uuid == NULL)
 		goto out;
 

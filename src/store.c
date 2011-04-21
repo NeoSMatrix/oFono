@@ -86,7 +86,8 @@ static int create_dirs(const char *filename, const mode_t mode)
 	return 0;
 }
 
-const char *mms_store(unsigned char *pdu, unsigned int len)
+const char *mms_store(const char *service_id, unsigned char *pdu,
+							unsigned int len)
 {
 	GChecksum *checksum;
 	guint8 digest[MMS_SHA1_UUID_LEN];
@@ -115,7 +116,7 @@ const char *mms_store(unsigned char *pdu, unsigned int len)
 
 	pathname = g_string_new(homedir);
 
-	g_string_append(pathname, "/.mms/");
+	g_string_append_printf(pathname, "/.mms/%s/", service_id);
 
 	uuid = digest_to_str(digest);
 	g_string_append(pathname, uuid);

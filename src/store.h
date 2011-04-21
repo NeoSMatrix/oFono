@@ -19,4 +19,5 @@
  *
  */
 
-const char *mms_store(unsigned char *pdu, unsigned int len);
+const char *mms_store(const char *service_id, unsigned char *pdu,
+							unsigned int len);
