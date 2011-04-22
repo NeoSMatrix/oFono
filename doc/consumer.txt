@@ -34,21 +34,20 @@ interface to be provided by a consumer (acting as a service provider):
 # simple match on the content type
 MatchContentType=application/vnd.syncml.notification
 # match on WAP application id
-MatchPushId=x-wap-application:syncml.dm
+MatchApplicationId=x-wap-application:syncml.dm
 # D-Bus session or system bus
 TargetBus=session
 # D-Bus service name
 TargetService=com.meego.omadm
 # D-Bus target path
 TargetPath=/com/meego/omadm
-# D-Bus target method
-TargetMethod=PushNotify
 
 You can have as many of group (i.e. [OMA-DM]) you want in one file or multiple
 files. They will all be read on mmsd startup and can then be progressed. This
 file must be located in /usr/lib/mms/push.d/ directory, its name extension must
 be ".conf". All keys are mandatory except MatchPushId which is optional.
-See the [PushNotify API] section below for TargetMethod signature details.
+The D-Bus target method is named Notify, see the [Notify API] section below for
+its signature details.
 
 
 D-Bus activation service file
@@ -64,17 +63,85 @@ Name=com.meego.omadm
 Exec=/usr/bin/omadm_consumer
 
 
-PushNotify API
-==============
+Notify API
+==========
 
 Service		unique name (must match the consumer's TargetService)
-Interface	org.ofono.mms
+Interface	org.ofono.mms.PushConsumer
 Object path	freely definable
 
-Method		void PushNotify(array{byte} header, array{byte} body)
+Method		void Notify(array{byte} header, array{byte} body)
 
 			Requests the consumer to process a new WAP Push
 			notification that has arrived containing an appropriate
 			message.
 
 			Possible Errors: None
+
+
+Python consumer sample
+======================
+
+The sample location and name must match the 'Exec' key entry value of the D-Bus
+activation service file. This consumer receives the WAP Push Notification and
+dumps the WAP Push Notifcation's header and body in 2 separates files.
+
+The "Release" method is only present to gracefully exit the sample using the
+shell command below:
+# dbus-send --print-reply --session --dest="com.meego.omadm"
+			/com/meego/omadm org.ofono.mms.PushConsumer.Release
+
+#!/usr/bin/env python
+import gobject
+
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+
+if getattr(dbus, 'version', (0,0,0)) >= (0,41,0):
+	import dbus.glib
+
+class ServerObject(dbus.service.Object):
+	def __init__(self):
+		# Here the service name
+		bus_name = dbus.service.BusName("com.meego.omadm",
+							bus=dbus.SessionBus())
+		# Here the object path
+		dbus.service.Object.__init__(self, bus_name, "/com/meego/omadm")
+
+	# Here the interface name, and the method is named same as on dbus.
+	@dbus.service.method("org.ofono.mms.PushConsumer",
+				in_signature="ayay", out_signature="i")
+	def Notify(self, hdr, body):
+		hdrstr = ""
+		for hbyte in hdr:
+			hdrstr += str(hbyte)
+
+		print "hdr length = %d, hdr : %s" % (len (hdr), hdrstr)
+
+		bodystr = ""
+		for bbyte in body:
+			bodystr += str(bbyte)
+
+		print "body length = %d, body : %s" % (len(body), bodystr)
+
+		f = open("/tmp/dm_header.out", "w")
+		f.write("%s" % (hdrstr))
+		f.close()
+
+		f = open("/tmp/dm_body.out", "w")
+		f.write("%s" % (bodystr))
+		f.close()
+		return 0
+
+	@dbus.service.method("org.ofono.mms.PushConsumer")
+	def Release(self):
+		mainloop.quit()
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	server = ServerObject()
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
