@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 
 #include <glib.h>
 
@@ -32,6 +33,8 @@
 #include "mms.h"
 
 #define MMS_CONTENT_TYPE "application/vnd.wap.mms-message"
+#define MMS_CONSUMER_INTERFACE "org.ofono.mms.PushConsumer"
+#define MMS_CONSUMER_METHOD "Notify"
 
 struct push_consumer {
 	char *type;
@@ -182,6 +185,74 @@ void __mms_push_config_files_cleanup(void)
 	pc_list = NULL;
 }
 
+static void mms_push_send_msg_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	if (dbus_set_error_from_message(&err, reply) == TRUE)
+		dbus_error_free(&err);
+
+	dbus_message_unref(reply);
+}
+
+static void mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
+			unsigned int hdrlen, const struct push_consumer *hdlr)
+{
+	DBusConnection *conn = mms_dbus_get_connection();
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	DBusMessageIter iter;
+	DBusMessageIter hdr_array;
+	DBusMessageIter body_array;
+
+	msg = dbus_message_new_method_call(hdlr->service, hdlr->path,
+				MMS_CONSUMER_INTERFACE, MMS_CONSUMER_METHOD);
+	if (msg == NULL) {
+		mms_error("Can't allocate new message");
+		return;
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &hdr_array);
+
+	dbus_message_iter_append_fixed_array(&hdr_array, DBUS_TYPE_BYTE,
+						&pdu, hdrlen);
+
+	dbus_message_iter_close_container(&iter, &hdr_array);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &body_array);
+
+	pdu += hdrlen;
+
+	dbus_message_iter_append_fixed_array(&body_array, DBUS_TYPE_BYTE,
+						&pdu, msglen - hdrlen);
+
+	dbus_message_iter_close_container(&iter, &body_array);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		mms_error("Failed to execute method call");
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_message_unref(msg);
+
+	if (call == NULL) {
+		mms_error("D-Bus connection not available");
+		return;
+	}
+
+	dbus_pending_call_set_notify(call, mms_push_send_msg_reply, NULL, NULL);
+
+	dbus_pending_call_unref(call);
+}
+
 gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 						unsigned int *offset)
 {
@@ -191,7 +262,9 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	struct wsp_header_iter iter;
 	unsigned int nread;
 	unsigned int consumed;
+	struct push_consumer *hdlr;
 	unsigned int i;
+	GSList *elt;
 	GString *hex;
 
 	DBG("pdu %p len %d", pdu, len);
@@ -213,7 +286,7 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	nread = 2;
 
 	if (wsp_decode_uintvar(pdu + nread, len,
-					&headerslen, &consumed) != TRUE)
+					&headerslen, &consumed) == FALSE)
 		return FALSE;
 
 	/* Consume uintvar bytes */
@@ -255,15 +328,23 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	if (wsp_header_iter_at_end(&iter) == FALSE)
 		return FALSE;
 
-	if (g_str_equal(ct, MMS_CONTENT_TYPE) == FALSE)
-		return FALSE;
-
 	nread += headerslen - consumed;
 
 	mms_info("Body Length: %d\n", len - nread);
 
-	if (offset != NULL)
-		*offset = nread;
+	if (g_str_equal(ct, MMS_CONTENT_TYPE) == TRUE) {
+		if (offset != NULL)
+			*offset = nread;
+		return TRUE;
+	}
 
-	return TRUE;
+	/* Handle other consumers */
+	for (elt = pc_list; elt != NULL; elt = g_slist_next(elt)) {
+		hdlr = elt->data;
+
+		if (g_str_equal(hdlr->type, ct) == TRUE)
+			mms_push_send_msg(pdu, len, nread, hdlr);
+	}
+
+	return FALSE;
 }
