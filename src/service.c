@@ -401,7 +401,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	uuid = mms_store(service->identity, data + nread, len - nread);
 	if (uuid == NULL)
-		goto out;
+		return;
 
 	if (mms_message_decode(data + nread, len - nread, &msg) == FALSE)
 		goto out;
