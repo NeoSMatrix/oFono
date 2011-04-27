@@ -395,6 +395,21 @@ static void dump_notification_ind(struct mms_message *msg)
 	mms_info("Location: %s\n", msg->ni.location);
 }
 
+static struct mms_request *create_get_request(void)
+{
+	struct mms_request *req;
+
+	req = g_try_new0(struct mms_request, 1);
+	if (req == NULL)
+		return NULL;
+
+	req->type = MMS_REQUEST_TYPE_GET;
+	req->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
+					 "/.mms/receive.mms");
+
+	return req;
+}
+
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
@@ -420,7 +435,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	dump_notification_ind(&msg);
 
-	request = g_try_new0(struct mms_request, 1);
+	request = create_get_request();
 	if (request == NULL)
 		goto out;
 
