@@ -48,6 +48,12 @@ struct mms_retrieve_conf {
 	time_t date;
 };
 
+struct mms_send_req {
+	char *to;
+	time_t date;
+	char *smil;
+};
+
 struct mms_attachment {
 	char *file;
 	ssize_t offset;
@@ -65,6 +71,7 @@ struct mms_message {
 	union {
 		struct mms_notification_ind ni;
 		struct mms_retrieve_conf rc;
+		struct mms_send_req sr;
 	};
 };
 
