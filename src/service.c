@@ -25,10 +25,13 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <net/if.h>
 #include <string.h>
 
 #include <glib.h>
 #include <gdbus.h>
+
+#include <gweb/gweb.h>
 
 #include "mmsutil.h"
 #include "mms.h"
@@ -47,6 +50,7 @@ struct mms_service {
 	gboolean bearer_setup;
 	gboolean bearer_active;
 	GQueue *request_queue;
+	GWeb *web;
 };
 
 enum mms_request_type {
@@ -282,6 +286,9 @@ void mms_service_unref(struct mms_service *service)
 		mms_request_destroy(request);
 
 	g_queue_free(service->request_queue);
+
+	if (service->web != NULL)
+		g_web_unref(service->web);
 
 	g_free(service->mmsc);
 
@@ -613,6 +620,8 @@ out:
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 				const char *interface, const char *proxy)
 {
+	int ifindex;
+
 	DBG("service %p active %d", service, active);
 
 	if (service == NULL)
@@ -631,6 +640,25 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 		return;
 
 	DBG("interface %s proxy %s", interface, proxy);
+
+	if (service->web != NULL) {
+		g_web_unref(service->web);
+		service->web = NULL;
+	}
+
+	if (interface == NULL)
+		return;
+
+	ifindex = if_nametoindex(interface);
+	if (ifindex == 0)
+		return;
+
+	service->web = g_web_new(ifindex);
+	if (service->web == NULL)
+		return;
+
+	if (g_strcmp0(proxy, "") != 0)
+		g_web_set_proxy(service->web, proxy);
 
 	process_request_queue(service);
 }
