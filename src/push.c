@@ -42,7 +42,7 @@ struct push_consumer {
 	char *method;
 };
 
-static GSList *push_consumer_list;
+static GSList *pc_list;
 
 static void dump_push_consumer(const char *group, struct push_consumer *pc)
 {
@@ -145,7 +145,7 @@ static void parse_config_file(const char *filename)
 		if (pc == NULL)
 			continue;
 
-		push_consumer_list = g_slist_prepend(push_consumer_list, pc);
+		pc_list = g_slist_prepend(pc_list, pc);
 	}
 
 	g_strfreev(consumers);
@@ -184,10 +184,10 @@ int __mms_push_config_files_init(void)
 
 void __mms_push_config_files_cleanup(void)
 {
-	g_slist_foreach(push_consumer_list, push_consumer_free, NULL);
+	g_slist_foreach(pc_list, push_consumer_free, NULL);
 
-	g_slist_free(push_consumer_list);
-	push_consumer_list = NULL;
+	g_slist_free(pc_list);
+	pc_list = NULL;
 }
 
 gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
