@@ -274,8 +274,11 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 						&len, &consumed) != TRUE)
 		return FALSE;
 
-	if (value_type == WSP_VALUE_TYPE_LONG)
-		return FALSE;
+	if (value_type == WSP_VALUE_TYPE_LONG) {
+		if (wsp_decode_field(data, max, &value_type, &data,
+						NULL, NULL) != TRUE)
+			return FALSE;
+	}
 
 	if (value_type == WSP_VALUE_TYPE_SHORT) {
 		const unsigned char *pdu_val = data;
