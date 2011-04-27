@@ -30,7 +30,6 @@
 #include <gdbus.h>
 
 #include "mmsutil.h"
-
 #include "mms.h"
 
 #define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
@@ -49,11 +48,20 @@ struct mms_service {
 	GQueue *request_queue;
 };
 
-struct download_request {
-	char *location;
+enum mms_request_type {
+	MMS_REQUEST_TYPE_GET,
+	MMS_REQUEST_TYPE_POST
 };
 
-static GList *service_list = NULL;
+struct mms_request {
+	enum mms_request_type type;
+	char *data_path;
+	char *location;
+	int recv_fd;
+	guint16 status;
+};
+
+static GList *service_list;
 
 static DBusConnection *connection;
 
@@ -61,8 +69,9 @@ static GDBusMethodTable service_methods[] = {
 	{ }
 };
 
-static void download_request_destroy(struct download_request *request)
+static void mms_request_destroy(struct mms_request *request)
 {
+	g_free(request->data_path);
 	g_free(request->location);
 	g_free(request);
 }
@@ -100,7 +109,7 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 
 void mms_service_unref(struct mms_service *service)
 {
-	struct download_request *request;
+	struct mms_request *request;
 
 	if (service == NULL)
 		return;
@@ -111,7 +120,7 @@ void mms_service_unref(struct mms_service *service)
 	DBG("service %p", service);
 
 	while ((request = g_queue_pop_head(service->request_queue)))
-		download_request_destroy(request);
+		mms_request_destroy(request);
 
 	g_queue_free(service->request_queue);
 
@@ -345,7 +354,7 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 
 static void process_request_queue(struct mms_service *service)
 {
-	struct download_request *request;
+	struct mms_request *request;
 
 	DBG("service %p", service);
 
@@ -361,7 +370,7 @@ static void process_request_queue(struct mms_service *service)
 
 		DBG("location %s", request->location);
 
-		download_request_destroy(request);
+		mms_request_destroy(request);
 	}
 
 	service->bearer_timeout = g_timeout_add_seconds(BEARER_IDLE_TIMEOUT,
@@ -389,7 +398,7 @@ static void dump_notification_ind(struct mms_message *msg)
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
-	struct download_request *request;
+	struct mms_request *request;
 	struct mms_message msg;
 	unsigned int nread;
 	const char *uuid;
@@ -411,7 +420,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	dump_notification_ind(&msg);
 
-	request = g_try_new0(struct download_request, 1);
+	request = g_try_new0(struct mms_request, 1);
 	if (request == NULL)
 		goto out;
 
