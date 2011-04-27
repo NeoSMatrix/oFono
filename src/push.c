@@ -194,9 +194,8 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 						unsigned int *offset)
 {
 	unsigned int headerslen;
-	unsigned int content_len;
-	enum wsp_value_type content_type;
-	const void *content_data;
+	const void *ct;
+	const void *aid;
 	struct wsp_header_iter iter;
 	unsigned int nread;
 	unsigned int consumed;
@@ -229,24 +228,42 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	nread += consumed;
 
 	/* Try to decode content-type */
-	if (wsp_decode_field(pdu + nread, headerslen, &content_type,
-				&content_data, &content_len, &consumed) != TRUE)
+	if (wsp_decode_content_type(pdu + nread, headerslen, &ct,
+					&consumed) == FALSE)
+		return FALSE;
+
+	if (ct == NULL)
 		return FALSE;
 
 	/* Consume Content Type bytes */
 	nread += consumed;
 
-	if (content_type != WSP_VALUE_TYPE_TEXT)
-		return FALSE;
-
-	if (g_str_equal(content_data, MMS_CONTENT_TYPE) == FALSE)
-		return FALSE;
-
+	/* Parse header to decode application_id */
 	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
-	while (wsp_header_iter_next(&iter));
+	aid = NULL;
+
+	while (wsp_header_iter_next(&iter)) {
+		const unsigned char *wk;
+
+		/* Skip application headers */
+		if (wsp_header_iter_get_hdr_type(&iter) !=
+					WSP_HEADER_TYPE_WELL_KNOWN)
+			continue;
+
+		wk = wsp_header_iter_get_hdr(&iter);
+
+		if ((wk[0] & 0x7f) != WSP_HEADER_TOKEN_APP_ID)
+			continue;
+
+		if (wsp_decode_application_id(&iter, &aid) == FALSE)
+			return FALSE;
+	}
 
 	if (wsp_header_iter_at_end(&iter) == FALSE)
+		return FALSE;
+
+	if (g_str_equal(ct, MMS_CONTENT_TYPE) == FALSE)
 		return FALSE;
 
 	nread += headerslen - consumed;
@@ -256,5 +273,5 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	if (offset != NULL)
 		*offset = nread;
 
-return TRUE;
+	return TRUE;
 }
