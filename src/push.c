@@ -39,7 +39,6 @@ struct push_consumer {
 	char *bus;
 	char *service;
 	char *path;
-	char *method;
 };
 
 static GSList *pc_list;
@@ -52,7 +51,6 @@ static void dump_push_consumer(const char *group, struct push_consumer *pc)
 	mms_debug("targetbus: %s\n", pc->bus);
 	mms_debug("service: %s\n", pc->service);
 	mms_debug("path: %s\n", pc->path);
-	mms_debug("method: %s\n", pc->method);
 }
 
 static void push_consumer_free(gpointer data, gpointer user_data)
@@ -64,7 +62,6 @@ static void push_consumer_free(gpointer data, gpointer user_data)
 	g_free(pc->bus);
 	g_free(pc->service);
 	g_free(pc->path);
-	g_free(pc->method);
 	g_free(pc);
 }
 
@@ -98,11 +95,6 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 	pc->path = g_key_file_get_string(keyfile, group,
 						"TargetPath", NULL);
 	if (pc->path == NULL)
-		goto out;
-
-	pc->method = g_key_file_get_string(keyfile, group,
-						"TargetMethod", NULL);
-	if (pc->method == NULL)
 		goto out;
 
 	dump_push_consumer(group, pc);
