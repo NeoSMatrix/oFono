@@ -52,6 +52,7 @@ static const char *mms_consumer_possible_keys[] = {
 };
 
 struct push_consumer {
+	char *group;
 	char *type;
 	char *app_id;
 	char *bus;
@@ -61,9 +62,9 @@ struct push_consumer {
 
 static GSList *pc_list;
 
-static void dump_push_consumer(const char *group, struct push_consumer *pc)
+static void dump_push_consumer(struct push_consumer *pc)
 {
-	mms_debug("[%s] <%p>", group, pc);
+	mms_debug("consumer group: [%s] <%p>", pc->group, pc);
 	mms_debug("type: %s", pc->type);
 	mms_debug("app_id: %s", pc->app_id);
 	mms_debug("targetbus: %s\n", pc->bus);
@@ -75,6 +76,7 @@ static void push_consumer_free(gpointer data, gpointer user_data)
 {
 	struct push_consumer *pc = data;
 
+	g_free(pc->group);
 	g_free(pc->type);
 	g_free(pc->app_id);
 	g_free(pc->bus);
@@ -119,6 +121,8 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 	if (pc == NULL)
 		return NULL;
 
+	pc->group = g_strdup(group);
+
 	pc->type = g_key_file_get_string(keyfile, group,
 				MMS_CONSUMER_KEY_MATCH_CONTENT_TYPE, NULL);
 	if (pc->type == NULL)
@@ -142,7 +146,7 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 	if (pc->path == NULL)
 		goto out;
 
-	dump_push_consumer(group, pc);
+	dump_push_consumer(pc);
 
 	return pc;
 
