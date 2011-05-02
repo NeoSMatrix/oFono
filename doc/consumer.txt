@@ -45,7 +45,24 @@ TargetPath=/com/meego/omadm
 You can have as many of group (i.e. [OMA-DM]) you want in one file or multiple
 files. They will all be read on mmsd startup and can then be progressed. This
 file must be located in /usr/lib/mms/push.d/ directory, its name extension must
-be ".conf". All keys are mandatory except MatchPushId which is optional.
+be ".conf".
+
+TargetPath, TargetService keys are mandatory.
+
+TargetBus key is optional, if it is present the currently only supported value
+is "session", if it is not present then the default value "session" will be
+used.
+
+MatchApplicationId key is optional, MatchContentType key is mandatory.
+
+If only the MatchContentType key is present without the MatchApplicationId key,
+then the consumer will be notified of all the received WAP push messages having
+the same content type.
+
+If the MatchApplicationId key is present, then the consumer will be notified of
+all the received WAP push messages having both the same content type AND the
+same application Id.
+
 The D-Bus target method is named Notify, see the [Notify API] section below for
 its signature details.
 
