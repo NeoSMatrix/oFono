@@ -395,6 +395,11 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	for (elt = pc_list; elt != NULL; elt = g_slist_next(elt)) {
 		hdlr = elt->data;
 
+		if (aid != NULL && hdlr->app_id != NULL) {
+			if (g_str_equal(hdlr->app_id, aid) == FALSE)
+				continue;
+		}
+
 		if (g_str_equal(hdlr->type, ct) == FALSE)
 			continue;
 
