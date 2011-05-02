@@ -42,6 +42,15 @@
 #define MMS_CONSUMER_KEY_TARGET_SERVICE		"TargetService"
 #define MMS_CONSUMER_KEY_TARGET_PATH		"TargetPath"
 
+static const char *mms_consumer_possible_keys[] = {
+	MMS_CONSUMER_KEY_MATCH_CONTENT_TYPE,
+	MMS_CONSUMER_KEY_MATCH_APPLICATION_ID,
+	MMS_CONSUMER_KEY_TARGET_BUS,
+	MMS_CONSUMER_KEY_TARGET_SERVICE,
+	MMS_CONSUMER_KEY_TARGET_PATH,
+	NULL,
+};
+
 struct push_consumer {
 	char *type;
 	char *app_id;
@@ -72,6 +81,33 @@ static void push_consumer_free(gpointer data, gpointer user_data)
 	g_free(pc->service);
 	g_free(pc->path);
 	g_free(pc);
+}
+
+static void check_keys(GKeyFile *keyfile, const char *group,
+			const char **possible_keys)
+{
+	char **avail_keys;
+	gsize nb_avail_keys, i, j;
+
+	avail_keys = g_key_file_get_keys(keyfile, group, &nb_avail_keys, NULL);
+	if (avail_keys == NULL)
+		return;
+
+	/*
+	 * For each key in the configuration file,
+	 * verify it is understood by mmsd
+	 */
+	for (i = 0 ; i < nb_avail_keys; i++) {
+		for (j = 0; possible_keys[j] ; j++)
+			if (g_strcmp0(avail_keys[i], possible_keys[j]) == 0)
+				break;
+
+		if (possible_keys[j] == NULL)
+			mms_warn("Unknown configuration key %s in [%s]",
+					avail_keys[i], group);
+	}
+
+	g_strfreev(avail_keys);
 }
 
 static struct push_consumer *create_consumer(GKeyFile *keyfile,
@@ -141,6 +177,9 @@ static void parse_config_file(const char *filename)
 
 	for (i = 0; consumers[i]; i++) {
 		struct push_consumer *pc;
+
+		/* Verify that provided keys are good */
+		check_keys(keyfile, consumers[i], mms_consumer_possible_keys);
 
 		pc = create_consumer(keyfile, consumers[i]);
 		if (pc == NULL)
