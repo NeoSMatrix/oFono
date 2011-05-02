@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -65,16 +66,174 @@ static GList *service_list;
 
 static DBusConnection *connection;
 
-static GDBusMethodTable service_methods[] = {
-	{ }
-};
-
 static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
 	g_free(request->location);
 	g_free(request);
 }
+
+static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
+						struct mms_message *msg)
+{
+	DBusMessageIter recipients;
+
+	dbus_message_iter_recurse(top_iter, &recipients);
+
+	while (dbus_message_iter_get_arg_type(&recipients)
+						== DBUS_TYPE_STRING) {
+		const char *rec;
+		char *tmp;
+
+		dbus_message_iter_get_basic(&recipients, &rec);
+
+		if (msg->sr.to != NULL) {
+			tmp = g_strjoin(",", msg->sr.to, rec, NULL);
+			if (tmp == NULL)
+				return FALSE;
+
+			g_free(msg->sr.to);
+
+			msg->sr.to = tmp;
+		} else
+			msg->sr.to = g_strdup(rec);
+
+		dbus_message_iter_next(&recipients);
+	}
+
+	return TRUE;
+}
+
+static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
+						struct mms_message *msg)
+{
+	DBusMessageIter attachments;
+
+	dbus_message_iter_recurse(top_iter, &attachments);
+
+	while (dbus_message_iter_get_arg_type(&attachments)
+						== DBUS_TYPE_STRUCT) {
+		DBusMessageIter entry;
+		const char *id;
+		const char *ct;
+		const char *filename;
+		struct mms_attachment *attach;
+
+		dbus_message_iter_recurse(&attachments, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return FALSE;
+
+		dbus_message_iter_get_basic(&entry, &id);
+
+		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return FALSE;
+
+		dbus_message_iter_get_basic(&entry, &ct);
+
+		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return FALSE;
+
+		dbus_message_iter_get_basic(&entry, &filename);
+
+		attach = g_try_new0(struct mms_attachment, 1);
+		if (attach == NULL)
+			return FALSE;
+
+		attach->content_id = g_strdup(id);
+		attach->content_type = g_strdup(ct);
+		attach->file = g_strdup(filename);
+
+		msg->attachments = g_slist_append(msg->attachments, attach);
+
+		dbus_message_iter_next(&attachments);
+	}
+
+	return TRUE;
+}
+
+static gboolean send_message_get_args(DBusMessage *dbus_msg,
+						struct mms_message *msg)
+{
+	DBusMessageIter top_iter;
+	const char *smil;
+
+	if (dbus_message_iter_init(dbus_msg, &top_iter) == FALSE)
+		return FALSE;
+
+	if (dbus_message_iter_get_arg_type(&top_iter) != DBUS_TYPE_ARRAY)
+		return FALSE;
+
+	if (send_message_get_recipients(&top_iter, msg) == FALSE)
+		return FALSE;
+
+	if (!dbus_message_iter_next(&top_iter))
+		return FALSE;
+
+	if (dbus_message_iter_get_arg_type(&top_iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(&top_iter, &smil);
+	msg->sr.smil = g_strdup(smil);
+
+	if (!dbus_message_iter_next(&top_iter))
+		return FALSE;
+
+	if (dbus_message_iter_get_arg_type(&top_iter) != DBUS_TYPE_ARRAY)
+		return FALSE;
+
+	return send_message_get_attachments(&top_iter, msg);
+}
+
+static DBusMessage *send_message(DBusConnection *conn,
+					DBusMessage *dbus_msg, void *data)
+{
+	DBusMessage *reply;
+	struct mms_message msg;
+
+	memset(&msg, 0, sizeof(msg));
+
+	msg.type = MMS_MESSAGE_TYPE_SEND_REQ;
+
+	/*
+	 * TODO set message status as draft
+	 */
+
+	if (send_message_get_args(dbus_msg, &msg) == FALSE) {
+		mms_debug("Invalid arguments");
+
+		mms_message_free(&msg);
+
+		return __mms_error_invalid_args(dbus_msg);
+	}
+
+	/*
+	 * TODO:
+	 * -encode pdu & store it
+	 * -register new updated dbus message object
+	 * -post gweb send request
+	 * -post AddedMessage dbus signal
+	 */
+
+	reply = dbus_message_new_method_return(dbus_msg);
+
+	/*
+	 * TODO set new message object path
+	 */
+
+	mms_message_free(&msg);
+
+	return reply;
+}
+
+static GDBusMethodTable service_methods[] = {
+	{ "SendMessage", "assa(sss)", "o", send_message },
+	{ }
+};
 
 struct mms_service *mms_service_create(void)
 {
