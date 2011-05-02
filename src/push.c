@@ -247,7 +247,7 @@ static void mms_push_send_msg_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
+static gboolean mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
 			unsigned int hdrlen, const struct push_consumer *hdlr)
 {
 	DBusConnection *conn = mms_dbus_get_connection();
@@ -261,7 +261,7 @@ static void mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
 				MMS_CONSUMER_INTERFACE, MMS_CONSUMER_METHOD);
 	if (msg == NULL) {
 		mms_error("Can't allocate new message");
-		return;
+		return FALSE;
 	}
 
 	dbus_message_iter_init_append(msg, &iter);
@@ -287,19 +287,21 @@ static void mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
 	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
 		mms_error("Failed to execute method call");
 		dbus_message_unref(msg);
-		return;
+		return FALSE;
 	}
 
 	dbus_message_unref(msg);
 
 	if (call == NULL) {
 		mms_error("D-Bus connection not available");
-		return;
+		return FALSE;
 	}
 
 	dbus_pending_call_set_notify(call, mms_push_send_msg_reply, NULL, NULL);
 
 	dbus_pending_call_unref(call);
+
+	return TRUE;
 }
 
 gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
@@ -391,8 +393,13 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 	for (elt = pc_list; elt != NULL; elt = g_slist_next(elt)) {
 		hdlr = elt->data;
 
-		if (g_str_equal(hdlr->type, ct) == TRUE)
-			mms_push_send_msg(pdu, len, nread, hdlr);
+		if (g_str_equal(hdlr->type, ct) == FALSE)
+			continue;
+
+		if (mms_push_send_msg(pdu, len, nread, hdlr) == FALSE) {
+			mms_error("Failed to call consumer: [%s]\n",
+					hdlr->group);
+		}
 	}
 
 	return FALSE;
