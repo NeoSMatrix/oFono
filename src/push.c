@@ -36,6 +36,12 @@
 #define MMS_CONSUMER_INTERFACE "org.ofono.mms.PushConsumer"
 #define MMS_CONSUMER_METHOD "Notify"
 
+#define MMS_CONSUMER_KEY_MATCH_CONTENT_TYPE	"MatchContentType"
+#define MMS_CONSUMER_KEY_MATCH_APPLICATION_ID	"MatchApplicationId"
+#define MMS_CONSUMER_KEY_TARGET_BUS		"TargetBus"
+#define MMS_CONSUMER_KEY_TARGET_SERVICE		"TargetService"
+#define MMS_CONSUMER_KEY_TARGET_PATH		"TargetPath"
+
 struct push_consumer {
 	char *type;
 	char *app_id;
@@ -78,25 +84,25 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 		return NULL;
 
 	pc->type = g_key_file_get_string(keyfile, group,
-						"MatchContentType", NULL);
+				MMS_CONSUMER_KEY_MATCH_CONTENT_TYPE, NULL);
 	if (pc->type == NULL)
 		goto out;
 
 	pc->app_id = g_key_file_get_string(keyfile, group,
-						"MatchApplicationId", NULL);
+				MMS_CONSUMER_KEY_MATCH_APPLICATION_ID, NULL);
 
 	pc->bus = g_key_file_get_string(keyfile, group,
-						"TargetBus", NULL);
+				MMS_CONSUMER_KEY_TARGET_BUS, NULL);
 	if (pc->bus == NULL)
 		goto out;
 
 	pc->service = g_key_file_get_string(keyfile, group,
-						"TargetService", NULL);
+				MMS_CONSUMER_KEY_TARGET_SERVICE, NULL);
 	if (pc->service == NULL)
 		goto out;
 
 	pc->path = g_key_file_get_string(keyfile, group,
-						"TargetPath", NULL);
+				MMS_CONSUMER_KEY_TARGET_PATH, NULL);
 	if (pc->path == NULL)
 		goto out;
 
