@@ -59,3 +59,5 @@ static inline void mms_dbus_dict_append_basic(DBusMessageIter *dict,
 	mms_dbus_property_append_basic(&entry, key, type, val);
 	dbus_message_iter_close_container(dict, &entry);
 }
+
+DBusMessage *__mms_error_invalid_args(DBusMessage *msg);

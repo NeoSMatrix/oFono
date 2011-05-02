@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "mms.h"
 
 static DBusConnection *connection;
@@ -81,3 +83,9 @@ void mms_dbus_property_append_basic(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &value);
 }
 
+DBusMessage *__mms_error_invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+					".InvalidArguments",
+					"Invalid arguments in method call");
+}
