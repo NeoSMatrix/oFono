@@ -134,6 +134,8 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 	pc->bus = g_key_file_get_string(keyfile, group,
 				MMS_CONSUMER_KEY_TARGET_BUS, NULL);
 	if (pc->bus == NULL)
+		pc->bus = g_strdup("session");
+	else if (g_str_equal(pc->bus, "session") == FALSE)
 		goto out;
 
 	pc->service = g_key_file_get_string(keyfile, group,
@@ -151,7 +153,7 @@ static struct push_consumer *create_consumer(GKeyFile *keyfile,
 	return pc;
 
 out:
-	mms_warn("Missing mandatory information for %s", group);
+	mms_warn("Invalid or missing mandatory information for %s", group);
 
 	push_consumer_free(pc, NULL);
 
