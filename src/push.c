@@ -240,17 +240,28 @@ static void mms_push_send_msg_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError err;
+	struct push_consumer *pc = user_data;
 
 	dbus_error_init(&err);
 
-	if (dbus_set_error_from_message(&err, reply) == TRUE)
-		dbus_error_free(&err);
+	if (dbus_set_error_from_message(&err, reply) == FALSE)
+		goto done;
 
+	mms_error("Consumer [%s] replied with error %s, %s",
+				pc->group, err.name, err.message);
+
+	pc_list = g_slist_remove(pc_list, pc);
+
+	push_consumer_free(pc, NULL);
+
+	dbus_error_free(&err);
+
+done:
 	dbus_message_unref(reply);
 }
 
 static gboolean mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
-			unsigned int hdrlen, const struct push_consumer *hdlr)
+			unsigned int hdrlen, struct push_consumer *hdlr)
 {
 	DBusConnection *conn = mms_dbus_get_connection();
 	DBusMessage *msg;
@@ -299,7 +310,8 @@ static gboolean mms_push_send_msg(const unsigned char *pdu, unsigned int msglen,
 		return FALSE;
 	}
 
-	dbus_pending_call_set_notify(call, mms_push_send_msg_reply, NULL, NULL);
+	dbus_pending_call_set_notify(call, mms_push_send_msg_reply,
+						hdlr, NULL);
 
 	dbus_pending_call_unref(call);
 
