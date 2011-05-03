@@ -203,9 +203,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	msg.type = MMS_MESSAGE_TYPE_SEND_REQ;
 
-	/*
-	 * TODO set message status as draft
-	 */
+	msg.sr.status = MMS_MESSAGE_STATUS_DRAFT;
 
 	if (send_message_get_args(dbus_msg, &msg) == FALSE) {
 		mms_debug("Invalid arguments");
