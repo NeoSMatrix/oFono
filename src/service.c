@@ -657,6 +657,7 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 	if (service->web == NULL)
 		return;
 
+	/* Sometimes no proxy is reported as string instead of NULL */
 	if (g_strcmp0(proxy, "") != 0)
 		g_web_set_proxy(service->web, proxy);
 
