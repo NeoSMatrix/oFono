@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+import csv
+
+if (len(sys.argv) < 4):
+	print "Usage: %s '<address>,...' '<smil-file-path>' '<content-id>,"\
+			" <content-type>, <file-path>'*" % (sys.argv[0])
+	print "Sample: send-message '12345,98765' '/home/test/smil.txt'"\
+			" 'id1,text/plain,/home/test/text.txt'"\
+			" 'id2,image/jpeg,/home/test/img.jpg'"
+	sys.exit(1)
+
+bus = dbus.SessionBus()
+
+manager = dbus.Interface(bus.get_object('org.ofono.mms', '/org/ofono/mms'),
+					'org.ofono.mms.Manager')
+
+services = manager.GetServices()
+path = services[0][0]
+
+service = dbus.Interface(bus.get_object('org.ofono.mms', path),
+						'org.ofono.mms.Service')
+
+recipients = dbus.Array([],signature=dbus.Signature('s'))
+reader = csv.reader([sys.argv[1]])
+for r in reader:
+	print "Recipient list: %s" % r
+	for i in r:
+		recipients.append(dbus.String(i))
+
+print "Smil path: %s" % (sys.argv[2])
+file = open(sys.argv[2],"r")
+smil = dbus.String(file.read())
+
+attachments = dbus.Array([],signature=dbus.Signature('(sss)'))
+for a in sys.argv[3:]:
+	print "Attachment: (%s)" % a
+	reader = csv.reader([a])
+	for r in reader:
+		attachments.append(dbus.Struct((dbus.String(r[0]),
+						dbus.String(r[1]),
+						dbus.String(r[2])
+						), signature=None))
+
+path = service.SendMessage(recipients, smil, attachments)
+
+print path
