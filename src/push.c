@@ -238,9 +238,9 @@ void __mms_push_config_files_cleanup(void)
 
 static void mms_push_send_msg_reply(DBusPendingCall *call, void *user_data)
 {
+	struct push_consumer *pc = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError err;
-	struct push_consumer *pc = user_data;
 
 	dbus_error_init(&err);
 
@@ -250,11 +250,11 @@ static void mms_push_send_msg_reply(DBusPendingCall *call, void *user_data)
 	mms_error("Consumer [%s] replied with error %s, %s",
 				pc->group, err.name, err.message);
 
+	dbus_error_free(&err);
+
 	pc_list = g_slist_remove(pc_list, pc);
 
 	push_consumer_free(pc, NULL);
-
-	dbus_error_free(&err);
 
 done:
 	dbus_message_unref(reply);
