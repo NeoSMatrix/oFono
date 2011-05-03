@@ -46,6 +46,7 @@ struct mms_notification_ind {
 };
 
 struct mms_retrieve_conf {
+	enum mms_message_status status;
 	char *from;
 	char *to;
 	char *subject;
