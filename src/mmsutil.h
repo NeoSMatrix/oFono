@@ -29,6 +29,13 @@ enum mms_message_type {
 	MMS_MESSAGE_TYPE_DELIVERY_IND =			134,
 };
 
+enum mms_message_status {
+	MMS_MESSAGE_STATUS_RECEIVED,
+	MMS_MESSAGE_STATUS_READ,
+	MMS_MESSAGE_STATUS_SENT,
+	MMS_MESSAGE_STATUS_DRAFT
+};
+
 struct mms_notification_ind {
 	char *from;
 	char *subject;
