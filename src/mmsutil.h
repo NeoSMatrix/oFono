@@ -99,6 +99,7 @@ struct mms_message {
 		struct mms_notification_ind ni;
 		struct mms_retrieve_conf rc;
 		struct mms_send_req sr;
+		struct mms_send_conf sc;
 	};
 };
 
