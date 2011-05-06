@@ -227,6 +227,18 @@ static const unsigned char mms_rc2[] = {
 				0x20, 0x21, 0x0A
 };
 
+static const unsigned char mms_sc1[] = {
+				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x37,
+				0x00, 0x8D, 0x90, 0x92, 0x80, 0x8B, 0x34, 0x64,
+				0x63, 0x32, 0x36, 0x38, 0x64, 0x37, 0x31, 0x34,
+				0x33, 0x38, 0x61, 0x00
+};
+
+static const unsigned char mms_sc2[] = {
+				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x38,
+				0x00, 0x8D, 0x90, 0x92, 0xE2
+};
+
 struct mms_test {
 	const char *pathname;
 	const unsigned char *pdu;
@@ -256,6 +268,16 @@ static const struct mms_test mms_retrieve_conf_test_1 = {
 static const struct mms_test mms_retrieve_conf_test_2 = {
 	.pdu = mms_rc2,
 	.len = sizeof(mms_rc2),
+};
+
+static const struct mms_test mms_send_conf_test_1 = {
+	.pdu = mms_sc1,
+	.len = sizeof(mms_sc1),
+};
+
+static const struct mms_test mms_send_conf_test_2 = {
+	.pdu = mms_sc2,
+	.len = sizeof(mms_sc2),
 };
 
 static void test_decode_mms(gconstpointer data)
@@ -348,6 +370,11 @@ int main(int argc, char **argv)
 			     &mms_retrieve_conf_test_1, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS Retrieve Conf 2",
 			     &mms_retrieve_conf_test_2, test_decode_mms);
+
+	g_test_add_data_func("/mmsutil/Decode MMS Send Conf 1",
+			     &mms_send_conf_test_1, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS Send Conf 2",
+			     &mms_send_conf_test_2, test_decode_mms);
 
 	return g_test_run();
 }
