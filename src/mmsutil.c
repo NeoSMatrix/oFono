@@ -627,6 +627,20 @@ static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 				MMS_HEADER_INVALID);
 }
 
+static gboolean decode_send_conf(struct wsp_header_iter *iter,
+						struct mms_message *out)
+{
+	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
+				HEADER_FLAG_MANDATORY, &out->transaction_id,
+				MMS_HEADER_MMS_VERSION,
+				HEADER_FLAG_MANDATORY, &out->version,
+				MMS_HEADER_RESPONSE_STATUS,
+				HEADER_FLAG_MANDATORY, &out->sc.rsp_status,
+				MMS_HEADER_MESSAGE_ID,
+				0, &out->sc.msgid,
+				MMS_HEADER_INVALID);
+}
+
 #define CHECK_WELL_KNOWN_HDR(hdr)			\
 	if (wsp_header_iter_next(&iter) == FALSE)	\
 		return FALSE;				\
@@ -665,7 +679,7 @@ gboolean mms_message_decode(const unsigned char *pdu,
 	case MMS_MESSAGE_TYPE_SEND_REQ:
 		return FALSE;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
-		return FALSE;
+		return decode_send_conf(&iter, out);
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 		return decode_notification_ind(&iter, out);
 	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
@@ -700,6 +714,7 @@ void mms_message_free(struct mms_message *msg)
 		g_free(msg->sr.smil);
 		break;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
+		g_free(msg->sc.msgid);
 		break;
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 		g_free(msg->ni.from);
