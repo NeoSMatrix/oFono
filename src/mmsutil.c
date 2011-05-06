@@ -393,6 +393,36 @@ static gboolean extract_priority(struct wsp_header_iter *iter, void *user)
 	return TRUE;
 }
 
+static gboolean extract_rsp_status(struct wsp_header_iter *iter, void *user)
+{
+	unsigned char *out = user;
+	const unsigned char *p;
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
+		return FALSE;
+
+	p = wsp_header_iter_get_val(iter);
+
+	switch (p[0]) {
+	case MMS_MESSAGE_RSP_STATUS_OK:
+	case MMS_MESSAGE_RSP_STATUS_ERR_UNSUPPORTED_MESSAGE:
+	case MMS_MESSAGE_RSP_STATUS_ERR_TRANS_FAILURE:
+	case MMS_MESSAGE_RSP_STATUS_ERR_TRANS_NETWORK_PROBLEM:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_FAILURE:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_SERVICE_DENIED:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_MESSAGE_FORMAT_CORRUPT:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_SENDING_ADDRESS_UNRESOLVED:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_CONTENT_NOT_ACCEPTED:
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_LACK_OF_PREPAID:
+		*out = p[0];
+		return TRUE;
+	default:
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static gboolean extract_unsigned(struct wsp_header_iter *iter, void *user)
 {
 	unsigned long *out = user;
@@ -453,7 +483,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_REPORT_ALLOWED:
 		return NULL;
 	case MMS_HEADER_RESPONSE_STATUS:
-		return NULL;
+		return extract_rsp_status;
 	case MMS_HEADER_RESPONSE_TEXT:
 		return extract_encoded_text;
 	case MMS_HEADER_SENDER_VISIBILITY:
