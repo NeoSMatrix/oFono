@@ -76,6 +76,11 @@ struct mms_send_req {
 	char *smil;
 };
 
+struct mms_send_conf {
+	enum mms_message_rsp_status rsp_status;
+	char *msgid;
+};
+
 struct mms_attachment {
 	char *file;
 	ssize_t offset;
