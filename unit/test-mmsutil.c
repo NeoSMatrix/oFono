@@ -56,6 +56,35 @@ static const char *message_type_to_string(enum mms_message_type type)
 	return NULL;
 }
 
+static const char *message_rsp_status_to_string(
+					enum mms_message_rsp_status status)
+{
+	switch (status) {
+	case MMS_MESSAGE_RSP_STATUS_OK:
+		return "ok";
+	case MMS_MESSAGE_RSP_STATUS_ERR_UNSUPPORTED_MESSAGE:
+		return "error-unsupported-message";
+	case MMS_MESSAGE_RSP_STATUS_ERR_TRANS_FAILURE:
+		return "error-transient-failure";
+	case MMS_MESSAGE_RSP_STATUS_ERR_TRANS_NETWORK_PROBLEM:
+		return "error-transient-network-problem";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_FAILURE:
+		return "error-permanent-failure";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_SERVICE_DENIED:
+		return "error-permanent-service-denied";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_MESSAGE_FORMAT_CORRUPT:
+		return "error-permanent-message-format-corrupt";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_SENDING_ADDRESS_UNRESOLVED:
+		return "error-permanent-sending-address-unresolved";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_CONTENT_NOT_ACCEPTED:
+		return "error-permanent-content-not-accepted";
+	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_LACK_OF_PREPAID:
+		return "error-permanent-lack-of-prepaid";
+	}
+
+	return NULL;
+}
+
 static void dump_notification_ind(struct mms_message *msg)
 {
 	char buf[128];
@@ -85,6 +114,13 @@ static void dump_retrieve_conf(struct mms_message *msg)
 	g_print("Priority: %s\n", msg->rc.priority);
 	g_print("Msg-Id: %s\n", msg->rc.msgid);
 	g_print("Date: %s\n", buf);
+}
+
+static void dump_send_conf(struct mms_message *msg)
+{
+	g_print("Response-Status: %s\n",
+			message_rsp_status_to_string(msg->sc.rsp_status));
+	g_print("Msg-Id: %s\n", msg->sc.msgid);
 }
 
 static const unsigned char mms_msg1[] = {
@@ -285,6 +321,9 @@ static void test_decode_mms(gconstpointer data)
 			break;
 		case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
 			dump_retrieve_conf(&msg);
+			break;
+		case MMS_MESSAGE_TYPE_SEND_CONF:
+			dump_send_conf(&msg);
 			break;
 		default:
 			break;
