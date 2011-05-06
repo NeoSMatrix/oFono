@@ -416,11 +416,9 @@ static gboolean extract_rsp_status(struct wsp_header_iter *iter, void *user)
 	case MMS_MESSAGE_RSP_STATUS_ERR_PERM_LACK_OF_PREPAID:
 		*out = p[0];
 		return TRUE;
-	default:
-		return FALSE;
 	}
 
-	return TRUE;
+	return FALSE;
 }
 
 static gboolean extract_unsigned(struct wsp_header_iter *iter, void *user)
