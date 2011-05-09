@@ -45,7 +45,17 @@ Methods		array{object,dict} GetMessages()
 			The initial status of the message is a draft and
 			and will be updated once sending has succeeded.
 
-			Possible Errors: [service].Error.InvalidArguments
+			Possible Errors:
+				[service].Error.InvalidArguments
+				[service].Error.UnsupportedMessage
+				[service].Error.TransientFailure
+				[service].Error.TransientNetworkProblem
+				[service].Error.PermanentFailure
+				[service].Error.PermanentServiceDenied
+				[service].Error.PermanentMessageFormatCorrupt
+				[service].Error.PermanentInvalidAddress
+				[service].Error.PermanentContentNotAccepted
+				[service].Error.PermanentLackOfPrepaid
 
 Signals		MessageAdded(object path, dict properties)
 
