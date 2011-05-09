@@ -86,6 +86,78 @@ void mms_dbus_property_append_basic(DBusMessageIter *iter,
 DBusMessage *__mms_error_invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
-					".InvalidArguments",
-					"Invalid arguments in method call");
+				".InvalidArguments",
+				"Invalid arguments in method call");
+}
+
+DBusMessage *__mms_error_unsupported_message(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".UnsupportedMessage",
+				"The MMSC does not support the request");
+}
+
+DBusMessage *__mms_error_trans_failure(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".TransientFailure",
+				"Request is valid but the MMSC is unable to "
+				"process it due to some temporary conditions");
+}
+
+DBusMessage *__mms_error_trans_network_problem(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".TransientNetworkProblem",
+				"The MMSC is unable to process the request "
+				"because of capacity overload");
+}
+
+DBusMessage *__mms_error_perm_failure(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentFailure",
+				"An unspecified permanent error occured during"
+				" the processing of the request by the MMSC");
+}
+
+DBusMessage *__mms_error_perm_service_denied(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentServiceDenied",
+				"The request is rejected because of service "
+				"authentication or authorization failure(s)");
+}
+
+DBusMessage *__mms_error_perm_message_format_corrupt(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentMessageFormatCorrupt",
+				"The request is rejected by the MMSC because "
+				"of an inconsistency with the message format");
+}
+
+DBusMessage *__mms_error_perm_invalid_address(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentInvalidAddress",
+				"No recipient address or none of them belongs "
+				"to the recipient MMSC");
+}
+
+DBusMessage *__mms_error_perm_content_not_accepted(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentContentNotAccepted",
+				"The message content is not accepted because "
+				"of message size, media type or copyrights "
+				"issues");
+}
+
+DBusMessage *__mms_error_perm_lack_of_prepaid(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, MMS_ERROR_INTERFACE
+				".PermanentLackOfPrepaid",
+				"The request is rejected due to insufficient "
+				"credit of the user");
 }

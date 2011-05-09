@@ -61,3 +61,12 @@ static inline void mms_dbus_dict_append_basic(DBusMessageIter *dict,
 }
 
 DBusMessage *__mms_error_invalid_args(DBusMessage *msg);
+DBusMessage *__mms_error_unsupported_message(DBusMessage *msg);
+DBusMessage *__mms_error_trans_failure(DBusMessage *msg);
+DBusMessage *__mms_error_trans_network_problem(DBusMessage *msg);
+DBusMessage *__mms_error_perm_failure(DBusMessage *msg);
+DBusMessage *__mms_error_perm_service_denied(DBusMessage *msg);
+DBusMessage *__mms_error_perm_message_format_corrupt(DBusMessage *msg);
+DBusMessage *__mms_error_perm_invalid_address(DBusMessage *msg);
+DBusMessage *__mms_error_perm_content_not_accepted(DBusMessage *msg);
+DBusMessage *__mms_error_perm_lack_of_prepaid(DBusMessage *msg);
