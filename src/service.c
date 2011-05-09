@@ -50,6 +50,7 @@ struct mms_service {
 	gboolean bearer_setup;
 	gboolean bearer_active;
 	GQueue *request_queue;
+	guint current_request_id;
 	GWeb *web;
 };
 
@@ -252,6 +253,8 @@ struct mms_service *mms_service_create(void)
 		g_free(service);
 		return NULL;
 	}
+
+	service->current_request_id = 0;
 
 	DBG("service %p", service);
 
@@ -516,6 +519,11 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static guint process_request(struct mms_request *request)
+{
+	return 0;
+}
+
 static void process_request_queue(struct mms_service *service)
 {
 	struct mms_request *request;
@@ -527,12 +535,19 @@ static void process_request_queue(struct mms_service *service)
 		service->bearer_timeout = 0;
 	}
 
+	if (service->current_request_id > 0)
+		return;
+
 	while (1) {
 		request = g_queue_pop_head(service->request_queue);
 		if (request == NULL)
 			break;
 
 		DBG("location %s", request->location);
+
+		service->current_request_id = process_request(request);
+		if (service->current_request_id > 0)
+			return;
 
 		mms_request_destroy(request);
 	}
