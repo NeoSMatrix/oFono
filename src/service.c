@@ -62,9 +62,12 @@ enum mms_request_type {
 struct mms_request {
 	enum mms_request_type type;
 	char *data_path;
+	char *tmp_path;
 	char *location;
+	gsize data_size;
 	int recv_fd;
 	guint16 status;
+	struct mms_service *service;
 };
 
 static GList *service_list;
@@ -74,6 +77,7 @@ static DBusConnection *connection;
 static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
+	g_free(request->tmp_path);
 	g_free(request->location);
 	g_free(request);
 }
@@ -583,6 +587,7 @@ static struct mms_request *create_get_request(void)
 		return NULL;
 
 	req->type = MMS_REQUEST_TYPE_GET;
+
 	req->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
 					 "/.mms/receive.mms");
 
@@ -621,6 +626,8 @@ void mms_service_push_notify(struct mms_service *service,
 	msg.uuid = g_strdup(uuid);
 
 	request->location = g_strdup(msg.ni.location);
+
+	request->service = service;
 
 	g_queue_push_tail(service->request_queue, request);
 
