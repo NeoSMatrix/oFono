@@ -100,6 +100,18 @@ static void dump_notification_ind(struct mms_message *msg)
 	g_print("Location: %s\n", msg->ni.location);
 }
 
+static void dump_attachment(gpointer data, gpointer user_data)
+{
+	struct mms_attachment *attach = data;
+
+	g_print("Attachment:\n");
+	g_print("\tFile: %s\n", attach->file);
+	g_print("\tOffset: %d\n", attach->offset);
+	g_print("\tLength: %d\n", attach->length);
+	g_print("\tContent-type: %s\n", attach->content_type);
+	g_print("\tContent-id: %s\n", attach->content_id);
+}
+
 static void dump_retrieve_conf(struct mms_message *msg)
 {
 	char buf[128];
@@ -114,6 +126,8 @@ static void dump_retrieve_conf(struct mms_message *msg)
 	g_print("Priority: %s\n", msg->rc.priority);
 	g_print("Msg-Id: %s\n", msg->rc.msgid);
 	g_print("Date: %s\n", buf);
+
+	g_slist_foreach(msg->attachments, dump_attachment, NULL);
 }
 
 static void dump_send_conf(struct mms_message *msg)
