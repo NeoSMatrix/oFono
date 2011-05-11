@@ -21,6 +21,10 @@ def message_added(name, value, member, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	print "{%s} [%s] %s %s" % (iface, name, member, value)
 
+def message_removed(name, value, member, path, interface):
+	iface = interface[interface.rfind(".") + 1:]
+	print "{%s} [%s] %s %s" % (iface, name, member, value)
+
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -49,6 +53,13 @@ if __name__ == '__main__':
 	bus.add_signal_receiver(message_added,
 					bus_name="org.ofono.mms",
 					signal_name = "MessageAdded",
+						member_keyword="member",
+						path_keyword="path",
+						interface_keyword="interface")
+
+	bus.add_signal_receiver(message_removed,
+					bus_name="org.ofono.mms",
+					signal_name = "MessageRemoved",
 						member_keyword="member",
 						path_keyword="path",
 						interface_keyword="interface")
