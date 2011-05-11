@@ -242,6 +242,12 @@ static GDBusMethodTable service_methods[] = {
 	{ }
 };
 
+static GDBusSignalTable service_signals[] = {
+	{ "MessageAdded",   "oa{sv}" },
+	{ "MessageRemoved", "o" },
+	{ }
+};
+
 struct mms_service *mms_service_create(void)
 {
 	struct mms_service *service;
@@ -361,7 +367,8 @@ int mms_service_register(struct mms_service *service)
 
 	if (g_dbus_register_interface(connection, service->path,
 						MMS_SERVICE_INTERFACE,
-						service_methods, NULL, NULL,
+						service_methods,
+						service_signals, NULL,
 						service, NULL) == FALSE) {
 		mms_error("Failed to register service interface");
 		g_free(service->path);
