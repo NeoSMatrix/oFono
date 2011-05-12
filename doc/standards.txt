@@ -26,3 +26,10 @@ Describes the WSP encoding that is used for MMS and WAP Push messages.
 
 Describes the encapsulation of MMS messages using WSP. It also describes
 the usage of HTTP as transport and MIME multipart for message content.
+
+WAP Assigned Names or Numbers
+=============================
+
+- WSP Content Type
+
+http://www.wapforum.org/wina/wsp-content-type.htm
