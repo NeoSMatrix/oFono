@@ -38,6 +38,7 @@ struct wsp_hex_str_entry {
  * http://www.wapforum.org/wina/wsp-content-type.htm
  */
 static const struct  wsp_hex_str_entry content_types[] = {
+	{ 0x33, "application/vnd.wap.multipart.related" },
 	{ 0x36, "application/vnd.wap.connectivity-wbxml" },
 	{ 0x3E, "application/vnd.wap.mms-message" },
 	{ 0x44, "application/vnd.syncml.notification" },
