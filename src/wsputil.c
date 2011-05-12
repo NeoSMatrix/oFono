@@ -377,7 +377,8 @@ gboolean wsp_header_iter_next(struct wsp_header_iter *iter)
 
 			iter->code_page = *pdu;
 			pdu++;
-		}
+		} else
+			iter->code_page = *pdu++;
 	}
 
 	if (pdu == end)
