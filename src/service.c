@@ -587,18 +587,18 @@ static void dump_notification_ind(struct mms_message *msg)
 
 static struct mms_request *create_get_request(void)
 {
-	struct mms_request *req;
+	struct mms_request *request;
 
-	req = g_try_new0(struct mms_request, 1);
-	if (req == NULL)
+	request = g_try_new0(struct mms_request, 1);
+	if (request == NULL)
 		return NULL;
 
-	req->type = MMS_REQUEST_TYPE_GET;
+	request->type = MMS_REQUEST_TYPE_GET;
 
-	req->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
-					 "/.mms/receive.mms");
+	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
+					     "/.mms/receive.mms");
 
-	return req;
+	return request;
 }
 
 void mms_service_push_notify(struct mms_service *service,
