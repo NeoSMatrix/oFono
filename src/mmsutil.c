@@ -737,6 +737,7 @@ void mms_message_free(struct mms_message *msg)
 	}
 
 	g_free(msg->uuid);
+	g_free(msg->path);
 	g_free(msg->transaction_id);
 
 	if (msg->attachments != NULL) {

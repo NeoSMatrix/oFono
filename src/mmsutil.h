@@ -92,6 +92,7 @@ struct mms_attachment {
 struct mms_message {
 	enum mms_message_type type;
 	char *uuid;
+	char *path;
 	char *transaction_id;
 	unsigned char version;
 	GSList *attachments;
