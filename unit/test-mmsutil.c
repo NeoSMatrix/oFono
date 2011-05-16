@@ -137,6 +137,20 @@ static void dump_send_conf(struct mms_message *msg)
 	g_print("Msg-Id: %s\n", msg->sc.msgid);
 }
 
+/*
+ * MMS M-Notify.Ind PDU 1
+ * This PDU shows the decoding of a M-Notify.Ind PDU with below content:
+ * Overall message size: 68
+ * MMS message type: notification-ind
+ * MMS transaction id: OgQKKB
+ * MMS version: 1.0
+ * From: Erotik
+ * Subject: Pin-Ups
+ * Class: Personal
+ * Size: 16384
+ * Expiry: 2011-05-19T10:56:340200
+ * Location: http://eps3.de/O/Z9IZO
+ */
 static const unsigned char mms_m_notify_ind_1[] = {
 				0x8C, 0x82, 0x98, 0x4F, 0x67, 0x51, 0x4B, 0x4B,
 				0x42, 0x00, 0x8D, 0x90, 0x89, 0x08, 0x80, 0x45,
@@ -149,6 +163,21 @@ static const unsigned char mms_m_notify_ind_1[] = {
 				0x49, 0x5A, 0x4F, 0x00
 };
 
+/*
+ * MMS M-Notify.Ind PDU 2
+ * This PDU shows the decoding of a M-Notify.Ind PDU without "subject" field
+ * and below content:
+ * Overall message size: 93
+ * MMS message type: notification-ind
+ * MMS transaction id: wLJeT7THu
+ * MMS version: 1.0
+ * From: 15551230000/TYPE=PLMN
+ * Subject: (null)
+ * Class: Personal
+ * Size: 23069
+ * Expiry: 2011-05-19T14:32:320200
+ * Location: http://mmsc11:10021/mmsc/1_1?wLJeT7THu
+ */
 static const unsigned char mms_m_notify_ind_2[] = {
 				0x8C, 0x82, 0x98, 0x77, 0x4C, 0x4A, 0x65, 0x54,
 				0x37, 0x54, 0x48, 0x75, 0x00, 0x8D, 0x90, 0x89,
@@ -164,6 +193,22 @@ static const unsigned char mms_m_notify_ind_2[] = {
 				0x37, 0x54, 0x48, 0x75, 0x00
 };
 
+/*
+ * MMS M-Retrieve.Conf PDU 1
+ * This PDU shows the decoding of a M-Retrieve.Conf PDU with an "us-ascii"
+ * encoded text "subject" field and below content:
+ * Overall message size: 200
+ * MMS message type: retrieve-conf
+ * MMS transaction id: 1201657238
+ * MMS version: 1.3
+ * From: 49891000/TYPE=PLMN
+ * To: (null)
+ * Subject: MMS-1.3-con-212
+ * Class: (null)
+ * Priority: (null)
+ * Msg-Id: mt-212
+ * Date: 2008-01-30T02:40:380100
+ */
 static const unsigned char mms_m_retrieve_conf_1[] = {
 				0x8C, 0x84, 0x98, 0x31, 0x32, 0x30, 0x31, 0x36,
 				0x35, 0x37, 0x32, 0x33, 0x38, 0x00, 0x8D, 0x93,
@@ -192,6 +237,22 @@ static const unsigned char mms_m_retrieve_conf_1[] = {
 				0x37, 0x38, 0x39, 0x30, 0x2F, 0x21, 0x28, 0x29,
 };
 
+/*
+ * MMS M-Retrieve.Conf PDU 2
+ * This PDU shows the decoding of a M-Retrieve.Conf PDU with multiple "To"
+ * fields and below content:
+ * Overall message size: 192
+ * MMS message type: retrieve-conf
+ * MMS transaction id: 1201657238
+ * MMS version: 1.0
+ * From: 1234567890/TYPE=PLMN
+ * To: 1111111111/TYPE=PLMN,2222222222/TYPE=PLMN,3333333333/TYPE=PLMN
+ * Subject: multito
+ * Class: Personal
+ * Priority: Normal
+ * Msg-Id: (null)
+ * Date: 2011-04-04T11:41:500200
+ */
 static const unsigned char mms_m_retrieve_conf_2[] = {
 				0x8C, 0x84, 0x98, 0x31, 0x32, 0x30, 0x31, 0x36,
 				0x35, 0x37, 0x32, 0x33, 0x38, 0x00, 0x8D, 0x90,
@@ -219,6 +280,20 @@ static const unsigned char mms_m_retrieve_conf_2[] = {
 				0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64
 };
 
+/*
+ * MMS M-Retrieve.Conf PDU 3
+ * Overall message size: 147
+ * MMS message type: retrieve-conf
+ * MMS transaction id: (null)
+ * MMS version: 1.0
+ * From: 1234567890/TYPE=PLMN
+ * To: 6666666666/TYPE=PLMN
+ * Subject: test without transaction ID
+ * Class: Personal
+ * Priority: Normal
+ * Msg-Id: (null)
+ * Date: 2011-04-08T12:27:050200
+ */
 static const unsigned char mms_m_retrieve_conf_3[] = {
 				0x8C, 0x84, 0x8D, 0x90, 0x85, 0x04, 0x4D, 0x9E,
 				0xE2, 0xF9, 0x96, 0x74, 0x65, 0x73, 0x74, 0x20,
@@ -241,6 +316,17 @@ static const unsigned char mms_m_retrieve_conf_3[] = {
 				0x20, 0x21, 0x0A
 };
 
+/*
+ * MMS M-Send.Conf PDU 1
+ * This PDU shows the decoding of a M-Send.Conf PDU with an accepted "response
+ * status" and a below content:
+ * Overall message size: 28
+ * MMS message type: send-conf
+ * MMS transaction id: 31887
+ * MMS version: 1.0
+ * Response-Status: ok
+ * Msg-Id: 4dc268d71438a
+ */
 static const unsigned char mms_m_send_conf_1[] = {
 				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x37,
 				0x00, 0x8D, 0x90, 0x92, 0x80, 0x8B, 0x34, 0x64,
@@ -248,6 +334,17 @@ static const unsigned char mms_m_send_conf_1[] = {
 				0x33, 0x38, 0x61, 0x00
 };
 
+/*
+ * MMS M-Send.Conf PDU 2
+ * This PDU shows the decoding of a M-Send.Conf PDU with an rejected "response
+ * status" and a below content:
+ * Overall message size: 13
+ * MMS message type: send-conf
+ * MMS transaction id: 31888
+ * MMS version: 1.0
+ * Response-Status: error-permanent-message-format-corrupt
+ * Msg-Id: (null)
+ */
 static const unsigned char mms_m_send_conf_2[] = {
 				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x38,
 				0x00, 0x8D, 0x90, 0x92, 0xE2
