@@ -137,7 +137,7 @@ static void dump_send_conf(struct mms_message *msg)
 	g_print("Msg-Id: %s\n", msg->sc.msgid);
 }
 
-static const unsigned char mms_msg1[] = {
+static const unsigned char mms_m_notify_ind_1[] = {
 				0x8C, 0x82, 0x98, 0x4F, 0x67, 0x51, 0x4B, 0x4B,
 				0x42, 0x00, 0x8D, 0x90, 0x89, 0x08, 0x80, 0x45,
 				0x72, 0x6F, 0x74, 0x69, 0x6B, 0x00, 0x96, 0x50,
@@ -149,7 +149,7 @@ static const unsigned char mms_msg1[] = {
 				0x49, 0x5A, 0x4F, 0x00
 };
 
-static const unsigned char mms_msg2[] = {
+static const unsigned char mms_m_notify_ind_2[] = {
 				0x8C, 0x82, 0x98, 0x77, 0x4C, 0x4A, 0x65, 0x54,
 				0x37, 0x54, 0x48, 0x75, 0x00, 0x8D, 0x90, 0x89,
 				0x17, 0x80, 0x31, 0x35, 0x35, 0x35, 0x31, 0x32,
@@ -164,7 +164,7 @@ static const unsigned char mms_msg2[] = {
 				0x37, 0x54, 0x48, 0x75, 0x00
 };
 
-static const unsigned char mms_enc_subject[] = {
+static const unsigned char mms_m_retrieve_conf_1[] = {
 				0x8C, 0x84, 0x98, 0x31, 0x32, 0x30, 0x31, 0x36,
 				0x35, 0x37, 0x32, 0x33, 0x38, 0x00, 0x8D, 0x93,
 				0x8B, 0x6D, 0x74, 0x2D, 0x32, 0x31, 0x32, 0x00,
@@ -192,7 +192,7 @@ static const unsigned char mms_enc_subject[] = {
 				0x37, 0x38, 0x39, 0x30, 0x2F, 0x21, 0x28, 0x29,
 };
 
-static const unsigned char mms_rc1[] = {
+static const unsigned char mms_m_retrieve_conf_2[] = {
 				0x8C, 0x84, 0x98, 0x31, 0x32, 0x30, 0x31, 0x36,
 				0x35, 0x37, 0x32, 0x33, 0x38, 0x00, 0x8D, 0x90,
 				0x85, 0x04, 0x4D, 0x99, 0x92, 0x5E, 0x96, 0x6D,
@@ -219,7 +219,7 @@ static const unsigned char mms_rc1[] = {
 				0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64
 };
 
-static const unsigned char mms_rc2[] = {
+static const unsigned char mms_m_retrieve_conf_3[] = {
 				0x8C, 0x84, 0x8D, 0x90, 0x85, 0x04, 0x4D, 0x9E,
 				0xE2, 0xF9, 0x96, 0x74, 0x65, 0x73, 0x74, 0x20,
 				0x77, 0x69, 0x74, 0x68, 0x6F, 0x75, 0x74, 0x20,
@@ -241,14 +241,14 @@ static const unsigned char mms_rc2[] = {
 				0x20, 0x21, 0x0A
 };
 
-static const unsigned char mms_sc1[] = {
+static const unsigned char mms_m_send_conf_1[] = {
 				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x37,
 				0x00, 0x8D, 0x90, 0x92, 0x80, 0x8B, 0x34, 0x64,
 				0x63, 0x32, 0x36, 0x38, 0x64, 0x37, 0x31, 0x34,
 				0x33, 0x38, 0x61, 0x00
 };
 
-static const unsigned char mms_sc2[] = {
+static const unsigned char mms_m_send_conf_2[] = {
 				0x8C, 0x81, 0x98, 0x33, 0x31, 0x38, 0x38, 0x38,
 				0x00, 0x8D, 0x90, 0x92, 0xE2
 };
@@ -259,39 +259,39 @@ struct mms_test {
 	unsigned int len;
 };
 
-static const struct mms_test mms_notification_test_1 = {
-	.pdu = mms_msg1,
-	.len = sizeof(mms_msg1),
+static const struct mms_test mms_m_notify_ind_test_1 = {
+	.pdu = mms_m_notify_ind_1,
+	.len = sizeof(mms_m_notify_ind_1),
 };
 
-static const struct mms_test mms_notification_test_2 = {
-	.pdu = mms_msg2,
-	.len = sizeof(mms_msg2),
+static const struct mms_test mms_m_notify_ind_test_2 = {
+	.pdu = mms_m_notify_ind_2,
+	.len = sizeof(mms_m_notify_ind_2),
 };
 
-static const struct mms_test mms_enc_subject_test_3 = {
-	.pdu = mms_enc_subject,
-	.len = sizeof(mms_enc_subject),
+static const struct mms_test mms_m_retrieve_conf_test_1 = {
+	.pdu = mms_m_retrieve_conf_1,
+	.len = sizeof(mms_m_retrieve_conf_1),
 };
 
-static const struct mms_test mms_retrieve_conf_test_1 = {
-	.pdu = mms_rc1,
-	.len = sizeof(mms_rc1),
+static const struct mms_test mms_m_retrieve_conf_test_2 = {
+	.pdu = mms_m_retrieve_conf_2,
+	.len = sizeof(mms_m_retrieve_conf_2),
 };
 
-static const struct mms_test mms_retrieve_conf_test_2 = {
-	.pdu = mms_rc2,
-	.len = sizeof(mms_rc2),
+static const struct mms_test mms_m_retrieve_conf_test_3 = {
+	.pdu = mms_m_retrieve_conf_3,
+	.len = sizeof(mms_m_retrieve_conf_3),
 };
 
-static const struct mms_test mms_send_conf_test_1 = {
-	.pdu = mms_sc1,
-	.len = sizeof(mms_sc1),
+static const struct mms_test mms_m_send_conf_test_1 = {
+	.pdu = mms_m_send_conf_1,
+	.len = sizeof(mms_m_send_conf_1),
 };
 
-static const struct mms_test mms_send_conf_test_2 = {
-	.pdu = mms_sc2,
-	.len = sizeof(mms_sc2),
+static const struct mms_test mms_m_send_conf_test_2 = {
+	.pdu = mms_m_send_conf_2,
+	.len = sizeof(mms_m_send_conf_2),
 };
 
 static void test_decode_mms(gconstpointer data)
@@ -373,22 +373,22 @@ int main(int argc, char **argv)
 {
 	g_test_init(&argc, &argv, NULL);
 
-	g_test_add_data_func("/mmsutil/Decode MMS Notification 1",
-				&mms_notification_test_1, test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS Notification 2",
-				&mms_notification_test_2, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-notify.Ind PDU 1",
+				&mms_m_notify_ind_test_1, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-notify.Ind PDU 2",
+				&mms_m_notify_ind_test_2, test_decode_mms);
 
-	g_test_add_data_func("/mmsutil/Decode MMS RC with encoded subject",
-				&mms_enc_subject_test_3, test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS Retrieve Conf 1",
-			     &mms_retrieve_conf_test_1, test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS Retrieve Conf 2",
-			     &mms_retrieve_conf_test_2, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 1",
+				&mms_m_retrieve_conf_test_1, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 2",
+				&mms_m_retrieve_conf_test_2, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 3",
+				&mms_m_retrieve_conf_test_3, test_decode_mms);
 
-	g_test_add_data_func("/mmsutil/Decode MMS Send Conf 1",
-			     &mms_send_conf_test_1, test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS Send Conf 2",
-			     &mms_send_conf_test_2, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 1",
+				&mms_m_send_conf_test_1, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 2",
+				&mms_m_send_conf_test_2, test_decode_mms);
 
 	return g_test_run();
 }
