@@ -207,7 +207,8 @@ static void test_decode_push(gconstpointer data)
 	/* Consume Content Type bytes */
 	nread += consumed;
 
-	g_print("Content-Type: %s\n", (const char *) content_data);
+	if (g_test_verbose())
+		g_print("Content-Type: %s\n", (const char *) content_data);
 
 	wsp_header_iter_init(&iter, pdu + nread, headerslen - consumed, 0);
 
@@ -217,30 +218,44 @@ static void test_decode_push(gconstpointer data)
 		const unsigned char *wk;
 		const void *urn;
 
-		g_print("Header: ");
+		if (g_test_verbose())
+			g_print("Header: ");
+
 		switch (wsp_header_iter_get_hdr_type(&iter)) {
 		case WSP_HEADER_TYPE_WELL_KNOWN:
 			wk = hdr;
-			g_print("Well known %x\n", wk[0] & 0x7f);
+
+			if (g_test_verbose())
+				g_print("Well known %02x\n", wk[0] & 0x7f);
+
 			if ((wk[0] & 0x7f) == WSP_HEADER_TOKEN_APP_ID) {
 				ret = wsp_decode_application_id(&iter, &urn);
 
 				g_assert(ret == TRUE);
 
-				g_print("app_id=%s\n", (const char *)urn);
+				if (g_test_verbose())
+					g_print("app_id=%s\n",
+							(const char *)urn);
 			}
 			break;
 		case WSP_HEADER_TYPE_APPLICATION:
-			g_print("Application: %s\n", (const char *) hdr);
+			if (g_test_verbose())
+				g_print("Application: %s\n",
+						(const char *) hdr);
 			break;
 		}
 
-		g_print("Value: ");
-		dump_field(wsp_header_iter_get_val_type(&iter), val,
-				wsp_header_iter_get_val_len(&iter));
+		if (g_test_verbose()) {
+			g_print("Value: ");
+
+			dump_field(wsp_header_iter_get_val_type(&iter), val,
+					wsp_header_iter_get_val_len(&iter));
+		}
 	}
 
-	g_print("Body Length: %d\n", len - nread - headerslen + consumed);
+	if (g_test_verbose())
+		g_print("Body Length: %d\n",
+				len - nread - headerslen + consumed);
 }
 
 int main(int argc, char **argv)
