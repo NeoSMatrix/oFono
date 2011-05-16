@@ -44,6 +44,9 @@
 #define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
 #define BEARER_IDLE_TIMEOUT	10	/* 10 seconds */
 
+typedef void (*mms_request_result_cb_t) (guint status, const char *data_path,
+					 gpointer user_data);
+
 struct mms_service {
 	gint refcount;
 	char *identity;
@@ -73,6 +76,7 @@ struct mms_request {
 	int recv_fd;
 	guint16 status;
 	struct mms_service *service;
+	mms_request_result_cb_t result_cb;
 };
 
 static GList *service_list;
@@ -901,6 +905,13 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static void result_request(guint status, const char *data_path,
+			   gpointer user_data)
+{
+	DBG("status : %d", status);
+	DBG("result_path :%s", data_path);
+}
+
 static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 {
 	gsize written;
@@ -943,6 +954,9 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 complete:
 	service = request->service;
+
+	if (request->result_cb != NULL)
+		request->result_cb(request->status, request->data_path, NULL);
 
 	mms_request_destroy(request);
 
@@ -1035,7 +1049,7 @@ static void dump_notification_ind(struct mms_message *msg)
 	mms_info("Location: %s\n", msg->ni.location);
 }
 
-static struct mms_request *create_get_request(void)
+static struct mms_request *create_get_request(mms_request_result_cb_t result_cb)
 {
 	struct mms_request *request;
 
@@ -1047,6 +1061,8 @@ static struct mms_request *create_get_request(void)
 
 	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
 					     "/.mms/receive.mms");
+
+	request->result_cb = result_cb;
 
 	request->status = 0;
 
@@ -1078,7 +1094,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	dump_notification_ind(&msg);
 
-	request = create_get_request();
+	request = create_get_request(result_request);
 	if (request == NULL)
 		goto out;
 
@@ -1116,7 +1132,7 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 	service->bearer_active = active;
 
 	if (active == FALSE)
-		return;
+		goto interface_down;
 
 	DBG("interface %s proxy %s", interface, proxy);
 
@@ -1126,11 +1142,11 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 	}
 
 	if (interface == NULL)
-		return;
+		goto interface_down;
 
 	ifindex = if_nametoindex(interface);
 	if (ifindex == 0)
-		return;
+		goto interface_down;
 
 	service->web = g_web_new(ifindex);
 	if (service->web == NULL)
@@ -1141,6 +1157,10 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 		g_web_set_proxy(service->web, proxy);
 
 	process_request_queue(service);
+
+interface_down:
+	if (service->current_request_id > 0)
+		g_web_cancel_request(service->web, service->current_request_id);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
