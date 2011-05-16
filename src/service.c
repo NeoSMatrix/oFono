@@ -27,8 +27,10 @@
 #include <unistd.h>
 #include <net/if.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <gdbus.h>
 
 #include <gweb/gweb.h>
@@ -281,6 +283,22 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 	return service;
 }
 
+static void process_request_queue(struct mms_service *service);
+
+static void complete_request(struct mms_request *request)
+{
+	struct mms_service *service = request->service;
+
+	mms_request_destroy(request);
+
+	if (service->current_request_id == 0)
+		return;
+
+	service->current_request_id = 0;
+
+	process_request_queue(service);
+}
+
 void mms_service_unref(struct mms_service *service)
 {
 	struct mms_request *request;
@@ -454,8 +472,6 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 	return 0;
 }
 
-static void process_request_queue(struct mms_service *service);
-
 static gboolean bearer_setup_timeout(gpointer user_data)
 {
 	struct mms_service *service = user_data;
@@ -530,8 +546,80 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean web_get_cb(GWebResult *result, gpointer user_data)
+{
+	gsize written;
+	gsize chunk_size;
+	struct mms_request *request = user_data;
+	const guint8 *chunk;
+
+	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
+		goto complete;
+
+	if (chunk_size == 0) {
+		close(request->recv_fd);
+
+		request->status = g_web_result_get_status(result);
+
+		DBG("status: %03u", request->status);
+		DBG("data size = %zd", request->data_size);
+
+		g_rename(request->tmp_path, request->data_path);
+
+		goto complete;
+	}
+
+	request->data_size += chunk_size;
+
+	written = write(request->recv_fd, chunk, chunk_size);
+	if (written != chunk_size) {
+		mms_error("only %zd/%zd bytes written\n",
+			  written, chunk_size);
+
+		close(request->recv_fd);
+
+		unlink(request->tmp_path);
+
+		goto complete;
+	}
+
+	return TRUE;
+
+complete:
+	complete_request(request);
+
+	return FALSE;
+}
+
 static guint process_request(struct mms_request *request)
 {
+	struct mms_service *service = request->service;
+	guint id;
+
+	switch (request->type) {
+	case MMS_REQUEST_TYPE_GET:
+		request->tmp_path = g_strdup_printf("%s.XXXXXX.tmp",
+						    request->data_path);
+
+		request->recv_fd = g_mkstemp_full(request->tmp_path,
+						  O_WRONLY | O_CREAT | O_TRUNC,
+						  S_IWUSR | S_IRUSR);
+		if (request->recv_fd < 0)
+			return 0;
+
+		id = g_web_request_get(service->web, request->location,
+				       web_get_cb, request);
+		if (id == 0) {
+			close(request->recv_fd);
+			unlink(request->tmp_path);
+		}
+
+		return id;
+
+	case MMS_REQUEST_TYPE_POST:
+		break;
+	}
+
 	return 0;
 }
 
@@ -597,6 +685,8 @@ static struct mms_request *create_get_request(void)
 
 	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
 					     "/.mms/receive.mms");
+
+	request->status = 0;
 
 	return request;
 }
