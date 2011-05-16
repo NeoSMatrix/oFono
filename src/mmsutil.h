@@ -125,4 +125,5 @@ struct mms_message {
 
 gboolean mms_message_decode(const unsigned char *pdu,
 				unsigned int len, struct mms_message *out);
+gboolean mms_message_encode(struct mms_message *msg, int fd);
 void mms_message_free(struct mms_message *msg);

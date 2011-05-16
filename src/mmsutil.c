@@ -32,6 +32,8 @@
 #include "wsputil.h"
 #include "mmsutil.h"
 
+#define MAX_TRANS_ID_SIZE 40
+#define FB_SIZE 256
 #define uninitialized_var(x) x = x
 
 typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
@@ -83,6 +85,12 @@ static const struct {
 	{ 0x03,	"us-ascii"	},
 	{ 0x6A,	"utf-8"		},
 	{ 0x00,	NULL		}
+};
+
+struct file_buffer {
+	unsigned char buf[FB_SIZE];
+	unsigned int size;
+	int fd;
 };
 
 static const char *charset_index2string(unsigned int index)
@@ -744,4 +752,121 @@ void mms_message_free(struct mms_message *msg)
 		g_slist_foreach(msg->attachments, free_attachment, NULL);
 		g_slist_free(msg->attachments);
 	}
+}
+
+static gboolean fb_flush(struct file_buffer *fb)
+{
+	ssize_t ret;
+
+	if (fb->size == 0)
+		return TRUE;
+
+	ret = write(fb->fd, fb->buf, fb->size);
+
+	if (ret <= 0)
+		return FALSE;
+
+	fb->size = 0;
+
+	return TRUE;
+}
+
+static void *fb_request_bytes(struct file_buffer *fb, unsigned int count)
+{
+	if (fb->size + count < FB_SIZE) {
+		void *ptr = fb->buf + fb->size;
+		fb->size += count;
+		return ptr;
+	}
+
+	if (fb_flush(fb) == FALSE)
+		return NULL;
+
+	if (count > FB_SIZE)
+		return NULL;
+
+	fb->size = count;
+
+	return fb->buf;
+}
+
+static gboolean mms_encode_header(struct mms_message *msg,
+						struct file_buffer *fb)
+{
+	char *ptr;
+	unsigned int len;
+
+	len = strlen(msg->transaction_id) + 1;
+
+	if (len > MAX_TRANS_ID_SIZE)
+		return FALSE;
+
+	ptr = fb_request_bytes(fb, 2);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = MMS_HEADER_MESSAGE_TYPE | 0x80;
+	ptr[1] = msg->type | 0x80;
+
+	ptr = fb_request_bytes(fb, 1);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = MMS_HEADER_TRANSACTION_ID | 0x80;
+
+	ptr = fb_request_bytes(fb, len);
+	if (ptr == NULL)
+		return FALSE;
+
+	strcpy(ptr, msg->transaction_id);
+
+	ptr = fb_request_bytes(fb, 2);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = MMS_HEADER_MMS_VERSION | 0x80;
+	ptr[1] = msg->version | 0x80;
+
+	return TRUE;
+}
+
+static gboolean mms_encode_notify_resp_ind(struct mms_message *msg,
+							struct file_buffer *fb)
+{
+	char *ptr;
+
+	ptr = fb_request_bytes(fb, 2);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = MMS_HEADER_STATUS | 0x80;
+	ptr[1] = msg->nri.notify_status | 0x80;
+
+	return fb_flush(fb);
+}
+
+gboolean mms_message_encode(struct mms_message *msg, int fd)
+{
+	struct file_buffer fb;
+
+	fb.size = 0;
+	fb.fd = fd;
+
+	if (mms_encode_header(msg, &fb) == FALSE)
+		return FALSE;
+
+	switch (msg->type) {
+	case MMS_MESSAGE_TYPE_SEND_REQ:
+	case MMS_MESSAGE_TYPE_SEND_CONF:
+	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+		return FALSE;
+	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
+		return mms_encode_notify_resp_ind(msg, &fb);
+	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
+	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
+	case MMS_MESSAGE_TYPE_DELIVERY_IND:
+		return FALSE;
+	}
+
+	return FALSE;
 }
