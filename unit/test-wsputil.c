@@ -38,7 +38,7 @@ static void dump_field(enum wsp_value_type type, const void *data,
 		const unsigned char *l = data;
 
 		for (i = 0; i < len; i++) {
-			g_print("%x ", l[i]);
+			g_print("%02x ", l[i]);
 
 			if ((i % 32) == 31)
 				g_print("\n");
@@ -51,7 +51,7 @@ static void dump_field(enum wsp_value_type type, const void *data,
 	{
 		const unsigned char *s = data;
 
-		g_print("%x\n", s[0] & 0x7f);
+		g_print("%02x\n", s[0] & 0x7f);
 		break;
 	}
 	case WSP_VALUE_TYPE_TEXT:
