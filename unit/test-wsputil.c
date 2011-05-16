@@ -223,7 +223,10 @@ static void test_decode_push(gconstpointer data)
 			wk = hdr;
 			g_print("Well known %x\n", wk[0] & 0x7f);
 			if ((wk[0] & 0x7f) == WSP_HEADER_TOKEN_APP_ID) {
-				wsp_decode_application_id(&iter, &urn);
+				ret = wsp_decode_application_id(&iter, &urn);
+
+				g_assert(ret == TRUE);
+
 				g_print("app_id=%s\n", (const char *)urn);
 			}
 			break;
