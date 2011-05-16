@@ -145,26 +145,95 @@ struct push_test {
 	unsigned int len;
 };
 
+/*
+ * MMS Push 1
+ * This PDU shows a MMS push message with below content:
+ * Overall Push Length: 107
+ * TID: 1
+ * Type: 6
+ * Push Content + Header Length: 36
+ * Content-Type: application/vnd.wap.mms-message
+ * Header: Well known: 0x2F -> X-Wap-Application-Id
+ * Value: 0x04 -> x-wap-application:mms.ua
+ * Field length: 1
+ * Header: Well known: 0x34 -> Push-Flag
+ * Value: 0x06
+ * Field length: 1
+ * Body Length: 68
+ */
 static const struct push_test push_test_1 = {
 	.pdu = push1,
 	.len = sizeof(push1),
 };
 
+/*
+ * MMS Push 2
+ * This PDU shows a MMS push message with below content:
+ * Overall Push Length: 132
+ * TID: 0
+ * Type: 6
+ * Push Content + Header Length: 36
+ * Content-Type: application/vnd.wap.mms-message
+ * Header: Well known: 0x2F -> X-Wap-Application-Id
+ * Value: 0x04 -> x-wap-application:mms.ua
+ * Field length: 1
+ * Header: Well known: 0x0D -> Content-Length
+ * Value: 0x5C
+ * Field length: 1
+ * Body Length: 93
+ */
 static const struct push_test push_test_2 = {
 	.pdu = push2,
 	.len = sizeof(push2),
 };
 
+/*
+ * DRM Push
+ * This PDU shows a DRM push message with below content:
+ * DRM Push
+ * Overall Push Length: 90
+ * TID: 76
+ * Type: 6
+ * Push Content + Header Length: 3
+ * Content-Type: application/vnd.oma.drm.rights+wbxml
+ * Header: Well known: 0x2F -> X-Wap-Application-Id
+ * Value: 0x08 -> x-wap-application:drm.ua
+ * Field length: 1
+ * Body Length: 84
+ */
 static const struct push_test push_test_3 = {
 	.pdu = push3,
 	.len = sizeof(push3),
 };
 
+/*
+ * DM Push
+ * This PDU shows a DM push message with below content:
+ * Overall Push Length: 38
+ * TID: 183
+ * Type: 6
+ * Push Content + Header Length: 3
+ * Content-Type: application/vnd.syncml.notification
+ * Header: Well known: 0x2F -> X-Wap-Application-Id
+ * Value: 0x07 -> x-wap-application:syncml.dm
+ * Field length: 1
+ * Body Length: 32
+ */
 static const struct push_test push_test_4 = {
 	.pdu = push4,
 	.len = sizeof(push4),
 };
 
+/*
+ * CP Push
+ * This PDU shows a CP push message with below content:
+ * Overall Push Length: 115
+ * TID: 196
+ * Type: 6
+ * Push Content + Header Length: 47
+ * Content-Type: application/vnd.wap.connectivity-wbxml
+ * Body Length: 65
+ */
 static const struct push_test push_test_5 = {
 	.pdu = push5,
 	.len = sizeof(push5),
