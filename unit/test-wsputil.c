@@ -262,15 +262,15 @@ int main(int argc, char **argv)
 {
 	g_test_init(&argc, &argv, NULL);
 
-	g_test_add_data_func("/wsputil/Decode Push 1", &push_test_1,
+	g_test_add_data_func("/wsputil/Decode MMS Push 1", &push_test_1,
 				test_decode_push);
-	g_test_add_data_func("/wsputil/Decode Push 2", &push_test_2,
+	g_test_add_data_func("/wsputil/Decode MMS Push 2", &push_test_2,
 				test_decode_push);
-	g_test_add_data_func("/wsputil/Decode Push 3", &push_test_3,
+	g_test_add_data_func("/wsputil/Decode DRM Push", &push_test_3,
 				test_decode_push);
-	g_test_add_data_func("/wsputil/Decode Push 4", &push_test_4,
+	g_test_add_data_func("/wsputil/Decode DM Push", &push_test_4,
 				test_decode_push);
-	g_test_add_data_func("/wsputil/Decode Push 5", &push_test_5,
+	g_test_add_data_func("/wsputil/Decode CP Push", &push_test_5,
 				test_decode_push);
 
 	return g_test_run();
