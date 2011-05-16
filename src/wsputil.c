@@ -492,6 +492,68 @@ static inline gboolean is_content_type_header(const unsigned char *pdu,
 	return FALSE;
 }
 
+gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
+				unsigned int dest_size, unsigned int *written)
+{
+	unsigned char d[5];
+	unsigned int count = 0;
+
+	if (dest == NULL || written == NULL)
+		return FALSE;
+
+	/* Separate into 7-bit chunks, LS first */
+	while (value || !count) {
+		d[count++] = value & 0x7F;
+		value = value >> 7;
+	}
+
+	if (count > dest_size)
+		return FALSE;
+
+	*written = count;
+
+	/*
+	 * Output to stream, MS first!
+	 * 0x80 flag = "continue". LS byte does not have this flag.
+	 */
+
+	while (--count)
+		*dest++ = d[count] | 0x80;
+
+	*dest = d[count];
+
+	return TRUE;
+}
+
+gboolean wsp_encode_value_length(unsigned int len, unsigned char *dest,
+				unsigned int dest_size, unsigned int *written)
+{
+	if (dest == NULL || written == NULL)
+		return FALSE;
+
+	if (dest_size < 1)
+		return FALSE;
+
+	if (len < 0x1f) {
+		*dest = len;
+		*written = 1;
+
+		return TRUE;
+	}
+
+	/* 0x1f is escape for variable length int */
+	*dest++ = 0x1f;
+	dest_size--;
+
+	if (wsp_encode_uintvar(len, dest, dest_size, written) == FALSE)
+		return FALSE;
+
+	(*written)++;
+
+	return TRUE;
+}
+
+
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,
 				unsigned int flags)
