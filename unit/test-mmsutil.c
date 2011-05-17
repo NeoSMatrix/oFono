@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
@@ -135,6 +136,49 @@ static void dump_send_conf(struct mms_message *msg)
 	g_print("Response-Status: %s\n",
 			message_rsp_status_to_string(msg->sc.rsp_status));
 	g_print("Msg-Id: %s\n", msg->sc.msgid);
+}
+
+static gboolean check_encoded_msg(const char *filename,
+						const unsigned char *msg_pdu)
+{
+	struct stat st;
+	unsigned char *pdu;
+	int fd;
+	int i;
+	int ret;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		g_printerr("Failed to open %s\n", filename);
+		return FALSE;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		g_printerr("Failed to stat %s\n", filename);
+		close(fd);
+		return FALSE;
+	}
+
+	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (!pdu || pdu == MAP_FAILED) {
+		g_printerr("Failed to mmap %s\n", filename);
+		close(fd);
+		return FALSE;
+	}
+
+	if (g_test_verbose()) {
+		for (i = 0; i < st.st_size; i++)
+			g_print("%02x ", pdu[i]);
+		g_print("\n");
+	}
+
+	ret = memcmp(msg_pdu, pdu, st.st_size);
+
+	munmap(pdu, st.st_size);
+
+	close(fd);
+
+	return ret == 0;
 }
 
 /*
@@ -466,13 +510,71 @@ static void test_decode_mms(gconstpointer data)
 	mms_message_free(&msg);
 }
 
+struct mms_encode_test {
+	struct mms_message msg;
+	const unsigned char pdu[];
+};
+
+static const struct mms_encode_test mms_m_notifyresp_ind_test_1 = {
+	.msg = {
+		.type = MMS_MESSAGE_TYPE_NOTIFYRESP_IND,
+		.uuid = NULL,
+		.path = NULL,
+		.transaction_id = "0123456789abcdef",
+		.version = MMS_MESSAGE_VERSION_1_2,
+		.attachments = NULL,
+		{.nri = {
+			.notify_status = MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED,
+		} }
+	},
+	.pdu = {	0x8C, 0x83, 0x98, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
+			0x36, 0x37, 0x38, 0x39, 0x61, 0x62, 0x63, 0x64, 0x65,
+			0x66, 0x00, 0x8D, 0x92, 0x95, 0x81
+	}
+};
+
+static void test_encode_mms(gconstpointer data)
+{
+	struct mms_encode_test *test_msg = (struct mms_encode_test *) data;
+	char *filepath;
+	gboolean ret;
+	int fd;
+
+	filepath = g_strdup_printf("%s/.mms/mms_XXXXXX.tmp",
+							g_get_home_dir());
+	if (filepath == NULL)
+		return;
+
+	fd = g_mkstemp_full(filepath, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR);
+	if (fd < 0) {
+		g_free(filepath);
+		return;
+	}
+
+	if (g_test_verbose())
+		g_print("tmp filename : %s\n", filepath);
+
+	ret = mms_message_encode(&test_msg->msg, fd);
+
+	close(fd);
+
+	if (ret == TRUE)
+		ret = check_encoded_msg(filepath, test_msg->pdu);
+
+	unlink(filepath);
+
+	g_free(filepath);
+
+	g_assert(ret == TRUE);
+}
+
 int main(int argc, char **argv)
 {
 	g_test_init(&argc, &argv, NULL);
 
-	g_test_add_data_func("/mmsutil/Decode MMS M-notify.Ind PDU 1",
+	g_test_add_data_func("/mmsutil/Decode MMS M-Notify.Ind PDU 1",
 				&mms_m_notify_ind_test_1, test_decode_mms);
-	g_test_add_data_func("/mmsutil/Decode MMS M-notify.Ind PDU 2",
+	g_test_add_data_func("/mmsutil/Decode MMS M-Notify.Ind PDU 2",
 				&mms_m_notify_ind_test_2, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 1",
@@ -486,6 +588,9 @@ int main(int argc, char **argv)
 				&mms_m_send_conf_test_1, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 2",
 				&mms_m_send_conf_test_2, test_decode_mms);
+
+	g_test_add_data_func("/mmsutil/Encode MMS M-NotifyResp.Ind 1",
+				&mms_m_notifyresp_ind_test_1, test_encode_mms);
 
 	return g_test_run();
 }
