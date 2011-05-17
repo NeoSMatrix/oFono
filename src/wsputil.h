@@ -20,7 +20,8 @@
  */
 
 enum wsp_header_iter_flag {
-	WSP_HEADER_ITER_FLAG_REJECT_CP =	0x1,
+	WSP_HEADER_ITER_FLAG_REJECT_CP =		0x1,
+	WSP_HEADER_ITER_FLAG_DETECT_MMS_MULTIPART =	0x2,
 };
 
 enum wsp_header_type {
@@ -81,6 +82,7 @@ gboolean wsp_header_iter_next(struct wsp_header_iter *iter);
 unsigned char wsp_header_iter_get_code_page(struct wsp_header_iter *iter);
 
 gboolean wsp_header_iter_at_end(struct wsp_header_iter *iter);
+gboolean wsp_header_iter_is_multipart(struct wsp_header_iter *iter);
 
 enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter);

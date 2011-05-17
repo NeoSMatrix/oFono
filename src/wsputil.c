@@ -329,6 +329,22 @@ gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
 	return TRUE;
 }
 
+static inline gboolean is_content_type_header(const unsigned char *pdu,
+						unsigned char code_page,
+						unsigned int flags)
+{
+	/* Check for MMS Content-Type header */
+	if (flags & WSP_HEADER_ITER_FLAG_DETECT_MMS_MULTIPART)
+		if (code_page == 1 && *pdu == 0x84)
+			return TRUE;
+
+	/* Check for WSP default Content-Type header */
+	if (code_page == 1 && *pdu == 0x91)
+		return TRUE;
+
+	return FALSE;
+}
+
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,
 				unsigned int flags)
@@ -386,6 +402,9 @@ gboolean wsp_header_iter_next(struct wsp_header_iter *iter)
 		return FALSE;
 
 	if (*pdu >= 0x80) {
+		if (is_content_type_header(pdu, iter->code_page, iter->flags))
+			return FALSE;
+
 		header = WSP_HEADER_TYPE_WELL_KNOWN;
 		hdr = pdu;
 		pdu++;
@@ -432,6 +451,13 @@ gboolean wsp_header_iter_at_end(struct wsp_header_iter *iter)
 		return TRUE;
 
 	return FALSE;
+}
+
+gboolean wsp_header_iter_is_multipart(struct wsp_header_iter *iter)
+{
+	const unsigned char *pdu = iter->pdu + iter->pos;
+
+	return is_content_type_header(pdu, iter->code_page, iter->flags);
 }
 
 enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter)
