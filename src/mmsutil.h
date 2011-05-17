@@ -49,6 +49,20 @@ enum mms_message_rsp_status {
 	MMS_MESSAGE_RSP_STATUS_ERR_PERM_LACK_OF_PREPAID =		235
 };
 
+enum mms_message_notify_status {
+	MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED =		129,
+	MMS_MESSAGE_NOTIFY_STATUS_REJECTED =		130,
+	MMS_MESSAGE_NOTIFY_STATUS_DEFERRED =		131,
+	MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED =	132
+};
+
+enum mms_message_version {
+	MMS_MESSAGE_VERSION_1_0 =	0x90,
+	MMS_MESSAGE_VERSION_1_1 =	0x91,
+	MMS_MESSAGE_VERSION_1_2 =	0x92,
+	MMS_MESSAGE_VERSION_1_3 =	0x93
+};
+
 struct mms_notification_ind {
 	char *from;
 	char *subject;
@@ -81,6 +95,10 @@ struct mms_send_conf {
 	char *msgid;
 };
 
+struct mms_notification_resp_ind {
+	enum mms_message_notify_status notify_status;
+};
+
 struct mms_attachment {
 	char *file;
 	ssize_t offset;
@@ -101,6 +119,7 @@ struct mms_message {
 		struct mms_retrieve_conf rc;
 		struct mms_send_req sr;
 		struct mms_send_conf sc;
+		struct mms_notification_resp_ind nri;
 	};
 };
 
