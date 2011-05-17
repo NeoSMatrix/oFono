@@ -38,6 +38,11 @@ struct wsp_hex_str_entry {
  * http://www.wapforum.org/wina/wsp-content-type.htm
  */
 static const struct  wsp_hex_str_entry content_types[] = {
+	{ 0x1C, "image/*" },
+	{ 0x1D, "image/gif" },
+	{ 0x1E, "image/jpeg" },
+	{ 0x1F, "image/tiff" },
+	{ 0x20, "image/png" },
 	{ 0x33, "application/vnd.wap.multipart.related" },
 	{ 0x36, "application/vnd.wap.connectivity-wbxml" },
 	{ 0x3E, "application/vnd.wap.mms-message" },
