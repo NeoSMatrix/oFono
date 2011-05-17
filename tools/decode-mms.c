@@ -234,7 +234,72 @@ static void decode_message(const unsigned char *data, unsigned int size)
 	decode_headers(&iter, mms_header, "");
 
 	if (wsp_header_iter_at_end(&iter) == TRUE)
+		goto done;
+
+	if (wsp_header_iter_is_multipart(&iter) == FALSE) {
+		printf("Not a multipart header, but not at the end"
+			"... something is wrong\n");
 		return;
+	}
+
+	if (wsp_multipart_iter_init(&mi, &iter, &ct, &ct_len) == FALSE) {
+		printf("multipart_iter_init failed\n");
+		return;
+	}
+
+	if (wsp_decode_content_type(ct, ct_len, &multipart_mimetype,
+					&consumed) == FALSE) {
+		printf("Unable to decode multipart-mimetype\n");
+		return;
+	}
+
+	printf("Content-Type: %s\n", (const char *) multipart_mimetype);
+	printf("Parameter Size: %d\n", ct_len - consumed);
+
+	while (wsp_multipart_iter_next(&mi) == TRUE) {
+		struct wsp_header_iter hi;
+
+		ct = wsp_multipart_iter_get_content_type(&mi);
+		ct_len = wsp_multipart_iter_get_content_type_len(&mi);
+
+		if (wsp_decode_content_type(ct, ct_len, &multipart_mimetype,
+						&consumed) == FALSE) {
+			printf("Unable to decode part multipart-mimetype\n");
+			return;
+		}
+
+		printf("\tContent-Type: %s\n",
+					(const char *) multipart_mimetype);
+		printf("\tParameter Size: %d\n", ct_len - consumed);
+		printf("\tHeader Size: %d\n",
+				wsp_multipart_iter_get_hdr_len(&mi));
+
+		wsp_header_iter_init(&hi, wsp_multipart_iter_get_hdr(&mi),
+					wsp_multipart_iter_get_hdr_len(&mi),
+					0);
+		decode_headers(&hi, wap_header, "\t");
+
+		if (wsp_header_iter_at_end(&hi) == FALSE) {
+			printf("Unable to fully decode part headers\n");
+			return;
+		}
+
+		printf("\tBody Size: %d\n\n",
+				wsp_multipart_iter_get_body_len(&mi));
+	}
+
+	if (wsp_multipart_iter_close(&mi, &iter) == FALSE) {
+		printf("Unable to close multipart iter\n");
+		return;
+	}
+
+	if (wsp_header_iter_at_end(&iter) == FALSE) {
+		printf("Didn't consume the entire message\n");
+		return;
+	}
+
+done:
+	printf("Done\n");
 }
 
 static int open_file(const char *pathname)
