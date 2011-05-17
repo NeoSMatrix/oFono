@@ -488,3 +488,129 @@ unsigned int wsp_header_iter_get_val_len(struct wsp_header_iter *iter)
 {
 	return iter->len;
 }
+
+gboolean wsp_multipart_iter_init(struct wsp_multipart_iter *mi,
+					struct wsp_header_iter *hi,
+					const void **out_content_type,
+					unsigned int *out_content_type_len)
+{
+	const unsigned char *pdu = hi->pdu + hi->pos;
+	const unsigned char *end = hi->pdu + hi->max;
+	unsigned int consumed;
+	unsigned int ct_len;
+
+	/* Assume content-type header is well known */
+	if (pdu + 1 > end)
+		return FALSE;
+
+	pdu++;
+
+	/* Consume the Content-Type value of Content-Type header */
+	if (wsp_decode_field(pdu, end - pdu,
+				NULL, NULL, NULL, &consumed) == FALSE)
+		return FALSE;
+
+	pdu += consumed;
+	ct_len = consumed;
+
+	/*
+	 * Consume the uinvar specifying the number of parts.  This is set to
+	 * 0 in later specifications and can be safely ignored
+	 */
+	if (wsp_decode_uintvar(pdu, end - pdu, NULL, &consumed) == FALSE)
+		return FALSE;
+
+	memset(mi, 0, sizeof(*mi));
+	mi->pdu = hi->pdu + hi->pos;
+	mi->max = hi->max - hi->pos;
+	mi->pos = pdu + consumed - mi->pdu;
+
+	if (out_content_type)
+		*out_content_type = mi->pdu + 1;
+
+	if (out_content_type_len)
+		*out_content_type_len = ct_len;
+
+	return TRUE;
+}
+
+gboolean wsp_multipart_iter_next(struct wsp_multipart_iter *mi)
+{
+	const unsigned char *pdu = mi->pdu + mi->pos;
+	const unsigned char *end = mi->pdu + mi->max;
+	unsigned int headers_len;
+	unsigned int body_len;
+	unsigned int consumed;
+
+	if (wsp_decode_uintvar(pdu, end - pdu,
+				&headers_len, &consumed) == FALSE)
+		return FALSE;
+
+	pdu += consumed;
+
+	if (wsp_decode_uintvar(pdu, end - pdu, &body_len, &consumed) == FALSE)
+		return FALSE;
+
+	pdu += consumed;
+
+	if (pdu + headers_len + body_len > end)
+		return FALSE;
+
+	/* Consume the Content-Type value */
+	if (wsp_decode_field(pdu, end - pdu,
+				NULL, NULL, NULL, &consumed) == FALSE)
+		return FALSE;
+
+	mi->content_type = pdu;
+	mi->content_type_len = consumed;
+	mi->headers = pdu + consumed;
+	mi->headers_len = headers_len - consumed;
+	mi->body = pdu + headers_len;
+	mi->body_len = body_len;
+
+	mi->pos = pdu - mi->pdu + headers_len + body_len;
+
+	return TRUE;
+}
+
+const void *wsp_multipart_iter_get_content_type(struct wsp_multipart_iter *mi)
+{
+	return mi->content_type;
+}
+
+unsigned int wsp_multipart_iter_get_content_type_len(
+						struct wsp_multipart_iter *mi)
+{
+	return mi->content_type_len;
+}
+
+const void *wsp_multipart_iter_get_hdr(struct wsp_multipart_iter *mi)
+{
+	return mi->headers;
+}
+
+unsigned int wsp_multipart_iter_get_hdr_len(struct wsp_multipart_iter *mi)
+{
+	return mi->headers_len;
+}
+
+const void *wsp_multipart_iter_get_body(struct wsp_multipart_iter *mi)
+{
+	return mi->body;
+}
+
+unsigned int wsp_multipart_iter_get_body_len(struct wsp_multipart_iter *mi)
+{
+	return mi->body_len;
+}
+
+gboolean wsp_multipart_iter_close(struct wsp_multipart_iter *mi,
+					struct wsp_header_iter *hi)
+{
+	if (mi->pos != mi->max)
+		return FALSE;
+
+	hi->pos += mi->pos;
+
+	return TRUE;
+}

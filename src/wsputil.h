@@ -55,6 +55,20 @@ struct wsp_header_iter {
 	unsigned int len;
 };
 
+struct wsp_multipart_iter {
+	const unsigned char *pdu;
+	unsigned int max;
+	unsigned int pos;
+
+	const void *content_type;
+	const void *headers;
+	const void *body;
+
+	unsigned int content_type_len;
+	unsigned int headers_len;
+	unsigned int body_len;
+};
+
 gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 				unsigned int *out_len, unsigned int *consumed);
 gboolean wsp_decode_integer(const unsigned char *pdu, unsigned int len,
@@ -89,3 +103,18 @@ const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter);
 enum wsp_value_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_val(struct wsp_header_iter *iter);
 unsigned int wsp_header_iter_get_val_len(struct wsp_header_iter *iter);
+
+gboolean wsp_multipart_iter_init(struct wsp_multipart_iter *mi,
+					struct wsp_header_iter *hi,
+					const void **out_content_type,
+					unsigned int *out_content_type_len);
+gboolean wsp_multipart_iter_next(struct wsp_multipart_iter *mi);
+const void *wsp_multipart_iter_get_content_type(struct wsp_multipart_iter *mi);
+unsigned int wsp_multipart_iter_get_content_type_len(
+						struct wsp_multipart_iter *mi);
+const void *wsp_multipart_iter_get_hdr(struct wsp_multipart_iter *mi);
+unsigned int wsp_multipart_iter_get_hdr_len(struct wsp_multipart_iter *mi);
+const void *wsp_multipart_iter_get_body(struct wsp_multipart_iter *mi);
+unsigned int wsp_multipart_iter_get_body_len(struct wsp_multipart_iter *mi);
+gboolean wsp_multipart_iter_close(struct wsp_multipart_iter *mi,
+					struct wsp_header_iter *hi);
