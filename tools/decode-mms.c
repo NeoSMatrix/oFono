@@ -100,41 +100,67 @@ static const char *mms_header[] = {
 	"X-Mms-Transaction-Id",
 };
 
-static void decode_message(const unsigned char *data, unsigned int size)
+
+static void decode_headers(struct wsp_header_iter *iter,
+				const char *header_lut[], const char *prefix)
 {
-	struct wsp_header_iter iter;
-
-	wsp_header_iter_init(&iter, data, size, 0);
-
-	while (wsp_header_iter_next(&iter)) {
-		const unsigned char *hdr = wsp_header_iter_get_hdr(&iter);
-		const unsigned char *val = wsp_header_iter_get_val(&iter);
+	while (wsp_header_iter_next(iter)) {
+		const unsigned char *hdr = wsp_header_iter_get_hdr(iter);
+		const unsigned char *val = wsp_header_iter_get_val(iter);
+		enum wsp_value_type type = wsp_header_iter_get_val_type(iter);
 		unsigned int len, i;
 
-		switch (wsp_header_iter_get_hdr_type(&iter)) {
+		switch (wsp_header_iter_get_hdr_type(iter)) {
 		case WSP_HEADER_TYPE_WELL_KNOWN:
-			printf("%s: ", mms_header[hdr[0] & 0x7f]);
+			printf("%s%s: ", prefix, header_lut[hdr[0] & 0x7f]);
 			break;
 		case WSP_HEADER_TYPE_APPLICATION:
-			printf("%s: ", (const char *) hdr);
+			printf("%s%s: ", prefix, (const char *) hdr);
 			break;
 		}
 
-		len = wsp_header_iter_get_val_len(&iter);
+		len = wsp_header_iter_get_val_len(iter);
 
-		switch (wsp_header_iter_get_val_type(&iter)) {
+		switch (type) {
 		case WSP_VALUE_TYPE_TEXT:
 			printf("%s", (const char *) val);
 			break;
 		default:
 			for (i = 0; i < len; i++)
 				printf("%02x ", val[i]);
-			printf("(len %d)", len);
+			printf("(len %d, ", len);
+
+			if (type == WSP_VALUE_TYPE_SHORT)
+				printf("Short)");
+			else
+				printf("Long)");
+
 			break;
 		}
 
 		printf("\n");
 	}
+}
+
+static void decode_message(const unsigned char *data, unsigned int size)
+{
+	struct wsp_header_iter iter;
+	struct wsp_multipart_iter mi;
+	unsigned int flags = 0;
+	const void *ct;
+	unsigned int ct_len;
+	const void *multipart_mimetype;
+	unsigned int consumed;
+
+	flags |= WSP_HEADER_ITER_FLAG_REJECT_CP;
+	flags |= WSP_HEADER_ITER_FLAG_DETECT_MMS_MULTIPART;
+
+	wsp_header_iter_init(&iter, data, size, flags);
+
+	decode_headers(&iter, mms_header, "");
+
+	if (wsp_header_iter_at_end(&iter) == TRUE)
+		return;
 }
 
 static int open_file(const char *pathname)
