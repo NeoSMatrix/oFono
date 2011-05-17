@@ -128,6 +128,23 @@ static const struct wsp_hex_str_entry app_id[] = {
 	{ 0xFF, NULL }
 };
 
+/* http://www.wapforum.org/wina/wsp-content-type.htm */
+static const struct wsp_hex_str_entry extension_mimetypes[] = {
+	{ 0x0201, "application/vnd.uplanet.cacheop-wbxml" },
+	{ 0x0202, "application/vnd.uplanet.signal" },
+	{ 0x0203, "application/vnd.uplanet.alert-wbxml" },
+	{ 0x0204, "application/vnd.uplanet.list-wbxml" },
+	{ 0x0205, "application/vnd.uplanet.listcmd-wbxml" },
+	{ 0x0206, "application/vnd.uplanet.channel-wbxml" },
+	{ 0x0207, "application/vnd.uplanet.provisioning-status-uri" },
+	{ 0x0208, "x-wap.multipart/vnd.uplanet.header-set" },
+	{ 0x0209, "application/vnd.uplanet.bearer-choice-wbxml" },
+	{ 0x020A, "application/vnd.phonecom.mmc-wbxml" },
+	{ 0x020B, "application/vnd.nokia.syncset+wbxml" },
+	{ 0x020C, "image/x-up-wpng" },
+	{ 0xFFFF, NULL },
+};
+
 /*
  * Control Characters 0-8, 10-31 and 127.  The tab character is omitted
  * since it is included in the sep chars array and the most generic TEXT
@@ -346,12 +363,28 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 
 	if (value_type == WSP_VALUE_TYPE_LONG) {
 		unsigned int media_len;
+		unsigned int value_len;
 
 		if (wsp_decode_field(data, max, &value_type, &data,
-						NULL, &media_len) != TRUE)
+						&value_len, &media_len) != TRUE)
 			return FALSE;
 
 		consumed -= len - media_len;
+
+		/* Handle Well-Known-Media Long-Integer case */
+		if (value_type == WSP_VALUE_TYPE_LONG) {
+			const unsigned char *pdu_val = data;
+			unsigned int var = 0;
+			unsigned int i;
+
+			if (value_len > sizeof(unsigned int))
+				return FALSE;
+
+			for (i = 0; i < value_len; i++)
+				var = (var << 8) | pdu_val[i + 1];
+
+			data = get_text_entry(var, extension_mimetypes);
+		}
 	}
 
 	if (value_type == WSP_VALUE_TYPE_SHORT) {
