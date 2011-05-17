@@ -28,6 +28,9 @@
 #include <net/if.h>
 #include <string.h>
 #include <fcntl.h>
+#include <ctype.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -423,6 +426,325 @@ int mms_service_unregister(struct mms_service *service)
 
 	g_free(service->path);
 	service->path = NULL;
+
+	return 0;
+}
+
+static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
+{
+	if (g_str_has_prefix(part->content_type, "application/smil"))
+		return TRUE;
+
+	return FALSE;
+}
+
+static char *content_type_get_param_value(const char *content_type,
+						const char *param_name)
+{
+	char *ret = NULL;
+	const char *tmp;
+
+	/* Skip content-type */
+	tmp = strchr(content_type, ';');
+
+	while (tmp != NULL) {
+		const char *name;
+
+		tmp++;
+		/* Skip spaces */
+		for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
+			;
+		if (*tmp == 0)
+			break;
+
+		name = tmp;
+
+		/* Go to end of name */
+		for (; *tmp != 0 && *tmp != '=' && isspace(*tmp) == 0; tmp++)
+			;
+		if (*tmp == 0)
+			break;
+
+		if (strncmp(param_name, name, tmp - name) == 0) {
+			const char *value;
+
+			/* Go to '=' */
+			tmp = strchr(tmp, '=');
+			if (tmp == NULL)
+				break;
+
+			tmp++;
+			/* Skip spaces */
+			for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
+				;
+			if (*tmp == 0)
+				break;
+
+			value = tmp;
+
+			/* Go to end of value */
+			for (; *tmp != 0 && *tmp != ';' && isspace(*tmp) == 0;
+									tmp++)
+				;
+			ret = g_strndup(value, tmp - value);
+			break;
+		}
+
+		/* Go to next parameter */
+		tmp = strchr(tmp, ';');
+	}
+
+	return ret;
+}
+
+static const char *time_to_str(const time_t *t)
+{
+	static char buf[128];
+	struct tm tm;
+
+	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime_r(t, &tm));
+	buf[127] = '\0';
+
+	return buf;
+}
+
+static void append_attachment_properties(struct mms_attachment *part,
+			DBusMessageIter *dict, DBusMessageIter *part_array)
+{
+	DBusMessageIter entry;
+	dbus_uint64_t val;
+
+	dbus_message_iter_open_container(part_array, DBUS_TYPE_STRUCT,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&part->content_id);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&part->content_type);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&part->file);
+	val = part->offset;
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT64, &val);
+	val = part->length;
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT64, &val);
+
+	dbus_message_iter_close_container(part_array, &entry);
+}
+
+static void append_smil(DBusMessageIter *dict,
+					const struct mms_attachment *part)
+{
+	const char *to_codeset = "utf-8";
+	char *from_codeset;
+	int fd;
+	struct stat st;
+	unsigned char *data;
+	char *smil;
+
+	fd = open(part->file, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s\n", part->file);
+		return;
+	}
+
+	if (fstat(fd, &st) < 0)
+		goto out;
+
+	data = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (data == NULL || data == MAP_FAILED)
+		goto out;
+
+	from_codeset = content_type_get_param_value(part->content_type,
+								"charset");
+	if (from_codeset != NULL) {
+		smil = g_convert((const char *) data + part->offset,
+					part->length, to_codeset, from_codeset,
+					NULL, NULL, NULL);
+
+		g_free(from_codeset);
+	} else
+		smil = g_convert((const char *) data + part->offset,
+					part->length, to_codeset, "us-ascii",
+					NULL, NULL, NULL);
+
+	munmap(data, st.st_size);
+
+	if (smil == NULL) {
+		mms_error("Failed to convert smil attachment\n");
+		goto out;
+	}
+
+	mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING, &smil);
+
+	g_free(smil);
+out:
+	close(fd);
+}
+
+static void append_rc_msg_attachments(DBusMessageIter *dict,
+					struct mms_message *msg)
+{
+	const char *dict_entry = "Attachments";
+	DBusMessageIter array;
+	DBusMessageIter entry;
+	DBusMessageIter variant;
+	GSList *part;
+	struct mms_attachment *smil;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &dict_entry);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						"a(ssstt)", &variant);
+
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						"(ssstt)", &array);
+
+	smil = NULL;
+	for (part = msg->attachments; part != NULL;
+					part = g_slist_next(part)) {
+		if (mms_attachment_is_smil(part->data))
+			smil = part->data;
+		else
+			append_attachment_properties(part->data, dict, &array);
+	}
+
+	dbus_message_iter_close_container(&variant, &array);
+
+	dbus_message_iter_close_container(&entry, &variant);
+
+	dbus_message_iter_close_container(dict, &entry);
+
+	if (smil != NULL)
+		append_smil(dict, smil);
+}
+
+static void append_rc_msg_recipients(DBusMessageIter *dict,
+					struct mms_message *msg)
+{
+	const char *dict_entry = "Recipients";
+	DBusMessageIter array;
+	DBusMessageIter entry;
+	DBusMessageIter variant;
+	gchar **tokens;
+	unsigned int i;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+					NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &dict_entry);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							"as", &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+							"s", &array);
+
+	tokens = g_strsplit(msg->rc.to, ",", -1);
+	for (i = 0; tokens[i] != NULL; i++)
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+								&tokens[i]);
+	g_strfreev(tokens);
+
+	dbus_message_iter_close_container(&variant, &array);
+
+	dbus_message_iter_close_container(&entry, &variant);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_rc_msg_properties(DBusMessageIter *dict,
+					struct mms_message *msg)
+{
+	const char *date = time_to_str(&msg->rc.date);
+	const char *status = "received";
+
+	mms_dbus_dict_append_basic(dict, "Status",
+					DBUS_TYPE_STRING, &status);
+
+	mms_dbus_dict_append_basic(dict, "Date",
+					DBUS_TYPE_STRING,  &date);
+
+	if (msg->rc.subject != NULL)
+		mms_dbus_dict_append_basic(dict, "Subject",
+					DBUS_TYPE_STRING, &msg->rc.subject);
+
+	if (msg->rc.from != NULL)
+		mms_dbus_dict_append_basic(dict, "Sender",
+					DBUS_TYPE_STRING, &msg->rc.from);
+
+	if (msg->rc.to != NULL)
+		append_rc_msg_recipients(dict, msg);
+
+	if (msg->attachments != NULL)
+		append_rc_msg_attachments(dict, msg);
+}
+
+static void emit_message_added(const struct mms_service *service,
+						struct mms_message *msg)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter, dict;
+
+	DBG("message %p", msg);
+
+	signal = dbus_message_new_signal(service->path, MMS_SERVICE_INTERFACE,
+							"MessageAdded");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&msg->path);
+
+	mms_dbus_dict_open(&iter, &dict);
+
+	switch (msg->type) {
+	case MMS_MESSAGE_TYPE_SEND_REQ:
+		break;
+	case MMS_MESSAGE_TYPE_SEND_CONF:
+		break;
+	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+		break;
+	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
+		break;
+	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
+		append_rc_msg_properties(&dict, msg);
+		break;
+	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
+		break;
+	case MMS_MESSAGE_TYPE_DELIVERY_IND:
+		break;
+	}
+
+	mms_dbus_dict_close(&iter, &dict);
+
+	g_dbus_send_message(connection, signal);
+}
+
+int mms_message_register(const struct mms_service *service,
+						struct mms_message *msg)
+{
+	DBG("message %p", msg);
+
+	msg->path = g_strdup_printf("%s/%s", service->path, msg->uuid);
+	if (msg->path == NULL)
+		return -ENOMEM;
+
+	if (g_dbus_register_interface(connection, msg->path,
+						MMS_MESSAGE_INTERFACE,
+						NULL,
+						NULL, NULL,
+						NULL, NULL) == FALSE) {
+		mms_error("Failed to register message interface");
+		g_free(msg->path);
+		msg->path = NULL;
+		return -EIO;;
+	}
+
+	emit_message_added(service, msg);
 
 	return 0;
 }

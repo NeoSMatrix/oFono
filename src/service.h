@@ -22,6 +22,7 @@
 #include "types.h"
 
 struct mms_service;
+struct mms_message;
 
 typedef void (*mms_service_bearer_handler_func_t) (mms_bool_t active,
 							void *user_data);
@@ -46,3 +47,6 @@ void mms_service_push_notify(struct mms_service *service,
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 				const char *interface, const char *proxy);
+
+int mms_message_register(const struct mms_service *service,
+						struct mms_message *msg);
