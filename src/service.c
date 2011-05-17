@@ -581,7 +581,7 @@ out:
 	close(fd);
 }
 
-static void append_rc_msg_attachments(DBusMessageIter *dict,
+static void append_msg_attachments(DBusMessageIter *dict,
 					struct mms_message *msg)
 {
 	const char *dict_entry = "Attachments";
@@ -676,9 +676,6 @@ static void append_rc_msg_properties(DBusMessageIter *dict,
 
 	if (msg->rc.to != NULL)
 		append_rc_msg_recipients(dict, msg);
-
-	if (msg->attachments != NULL)
-		append_rc_msg_attachments(dict, msg);
 }
 
 static void emit_message_added(const struct mms_service *service,
@@ -718,6 +715,9 @@ static void emit_message_added(const struct mms_service *service,
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
 		break;
 	}
+
+	if (msg->attachments != NULL)
+		append_msg_attachments(&dict, msg);
 
 	mms_dbus_dict_close(&iter, &dict);
 
