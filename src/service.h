@@ -50,3 +50,5 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 
 int mms_message_register(const struct mms_service *service,
 						struct mms_message *msg);
+int mms_message_unregister(const struct mms_service *service,
+						struct mms_message *msg);

@@ -749,6 +749,35 @@ int mms_message_register(const struct mms_service *service,
 	return 0;
 }
 
+static void emit_message_removed(const char *svc_path, const char *msg_path)
+{
+	g_dbus_emit_signal(connection, svc_path, MMS_MESSAGE_INTERFACE,
+				"MessageRemoved", DBUS_TYPE_OBJECT_PATH,
+				&msg_path, DBUS_TYPE_INVALID);
+}
+
+int mms_message_unregister(const struct mms_service *service,
+						struct mms_message *msg)
+{
+	DBG("message %p", msg);
+
+	if (msg->path == NULL)
+		return -EINVAL;
+
+	emit_message_removed(service->path, msg->path);
+
+	if (g_dbus_unregister_interface(connection, msg->path,
+					MMS_MESSAGE_INTERFACE) == FALSE) {
+		mms_error("Failed to unregister message interface");
+		return -EIO;
+	}
+
+	g_free(msg->path);
+	msg->path = NULL;
+
+	return 0;
+}
+
 int mms_service_set_identity(struct mms_service *service,
 					const char *identity)
 {
