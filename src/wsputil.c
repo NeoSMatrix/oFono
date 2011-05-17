@@ -276,9 +276,13 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 		return FALSE;
 
 	if (value_type == WSP_VALUE_TYPE_LONG) {
+		unsigned int media_len;
+
 		if (wsp_decode_field(data, max, &value_type, &data,
-						NULL, NULL) != TRUE)
+						NULL, &media_len) != TRUE)
 			return FALSE;
+
+		consumed -= len - media_len;
 	}
 
 	if (value_type == WSP_VALUE_TYPE_SHORT) {
