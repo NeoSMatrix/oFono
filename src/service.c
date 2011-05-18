@@ -75,6 +75,8 @@ struct mms_request {
 	char *data_path;
 	char *location;
 	gsize data_size;
+	gpointer data;
+	gsize offset;
 	int recv_fd;
 	guint16 status;
 	struct mms_service *service;
