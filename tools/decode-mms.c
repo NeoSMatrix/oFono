@@ -175,6 +175,39 @@ static const char *wap_header[] = {
 	"Cache-Control",
 };
 
+static const char *wap_param[] = {
+	"Q",
+	"Charset",
+	"Level",
+	"Type",
+	"Unused",
+	"Name (deprecated)",
+	"Filename (deprecated)",
+	"Differences",
+	"Padding",
+	"Type (multipart)",
+	"Start (deprecated)",
+	"Start-Info (deprecated)",
+	"Comment (deprecated)",
+	"Domain (deprecated)",
+	"Max-Age",
+	"Path (deprecated)",
+	"Secure",
+	"SEC",
+	"MAC",
+	"Creatione-Date",
+	"Modification-Date",
+	"Read-Date",
+	"Size",
+	"Name",
+	"Filename",
+	"Start",
+	"Start-Info",
+	"Comment",
+	"Domain",
+	"Path",
+};
+
 static void decode_headers(struct wsp_header_iter *iter,
 				const char *header_lut[], const char *prefix)
 {
@@ -216,6 +249,44 @@ static void decode_headers(struct wsp_header_iter *iter,
 	}
 }
 
+static void decode_parameters(const unsigned char *pdu, unsigned int len,
+				const char *prefix)
+{
+	struct wsp_parameter_iter iter;
+	struct wsp_parameter param;
+	char buf[128];
+
+	printf("%sParameter Size: %d\n", prefix, len);
+
+	wsp_parameter_iter_init(&iter, pdu, len);
+
+	while (wsp_parameter_iter_next(&iter, &param)) {
+		if (param.type == WSP_PARAMETER_TYPE_UNTYPED)
+			printf("%s%s: ", prefix, param.untyped);
+		else
+			printf("%s%s: ", prefix, wap_param[param.type]);
+
+		switch (param.value) {
+		case WSP_PARAMETER_VALUE_TEXT:
+			printf("%s\n", param.text);
+			break;
+		case WSP_PARAMETER_VALUE_INT:
+			printf("%u\n", param.integer);
+			break;
+		case WSP_PARAMETER_VALUE_DATE:
+			strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z",
+					localtime(&param.date));
+			buf[127] = '\0';
+			printf("%s\n", buf);
+			break;
+		case WSP_PARAMETER_VALUE_Q:
+			printf("\n");
+		}
+	}
+
+	printf("\n");
+}
+
 static void decode_message(const unsigned char *data, unsigned int size)
 {
 	struct wsp_header_iter iter;
@@ -254,7 +325,7 @@ static void decode_message(const unsigned char *data, unsigned int size)
 	}
 
 	printf("Content-Type: %s\n", (const char *) multipart_mimetype);
-	printf("Parameter Size: %d\n", ct_len - consumed);
+	decode_parameters(ct + consumed, ct_len - consumed, "\t");
 
 	while (wsp_multipart_iter_next(&mi) == TRUE) {
 		struct wsp_header_iter hi;
@@ -270,7 +341,7 @@ static void decode_message(const unsigned char *data, unsigned int size)
 
 		printf("\tContent-Type: %s\n",
 					(const char *) multipart_mimetype);
-		printf("\tParameter Size: %d\n", ct_len - consumed);
+		decode_parameters(ct + consumed, ct_len - consumed, "\t\t");
 		printf("\tHeader Size: %d\n",
 				wsp_multipart_iter_get_hdr_len(&mi));
 
