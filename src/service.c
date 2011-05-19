@@ -969,7 +969,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	const guint8 *chunk;
 
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
-		goto complete;
+		goto error;
 
 	if (chunk_size == 0) {
 		close(request->recv_fd);
@@ -991,15 +991,15 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 		mms_error("only %zd/%zd bytes written\n",
 			  written, chunk_size);
 
-		close(request->recv_fd);
-
-		unlink(request->tmp_path);
-
-		goto complete;
+		goto error;
 	}
 
 	return TRUE;
 
+error:
+	close(request->recv_fd);
+
+	unlink(request->tmp_path);
 complete:
 	service = request->service;
 
