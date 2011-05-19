@@ -621,7 +621,7 @@ static void append_msg_attachments(DBusMessageIter *dict,
 		append_smil(dict, smil);
 }
 
-static void append_rc_msg_recipients(DBusMessageIter *dict,
+static void append_msg_recipients(DBusMessageIter *dict,
 					struct mms_message *msg)
 {
 	const char *dict_entry = "Recipients";
@@ -630,6 +630,25 @@ static void append_rc_msg_recipients(DBusMessageIter *dict,
 	DBusMessageIter variant;
 	gchar **tokens;
 	unsigned int i;
+
+	switch (msg->type) {
+	case MMS_MESSAGE_TYPE_SEND_REQ:
+		tokens = g_strsplit(msg->sr.to, ",", -1);
+		break;
+	case MMS_MESSAGE_TYPE_SEND_CONF:
+		return;
+	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+		return;
+	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
+		return;
+	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
+		tokens = g_strsplit(msg->rc.to, ",", -1);
+		break;
+	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
+		return;
+	case MMS_MESSAGE_TYPE_DELIVERY_IND:
+		return;
+	}
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 					NULL, &entry);
@@ -641,7 +660,6 @@ static void append_rc_msg_recipients(DBusMessageIter *dict,
 	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
 							"s", &array);
 
-	tokens = g_strsplit(msg->rc.to, ",", -1);
 	for (i = 0; tokens[i] != NULL; i++)
 		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
 								&tokens[i]);
@@ -675,7 +693,7 @@ static void append_rc_msg_properties(DBusMessageIter *dict,
 					DBUS_TYPE_STRING, &msg->rc.from);
 
 	if (msg->rc.to != NULL)
-		append_rc_msg_recipients(dict, msg);
+		append_msg_recipients(dict, msg);
 }
 
 static void emit_message_added(const struct mms_service *service,
