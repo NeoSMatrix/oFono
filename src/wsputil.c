@@ -393,7 +393,7 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 
 		val = *pdu_val & 0x7f;
 
-		if (val > LAST_CONTENT_TYPE)
+		if (val >= LAST_CONTENT_TYPE)
 			return FALSE;
 
 		data = content_types[val];
