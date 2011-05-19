@@ -288,20 +288,6 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 
 static void process_request_queue(struct mms_service *service);
 
-static void complete_request(struct mms_request *request)
-{
-	struct mms_service *service = request->service;
-
-	mms_request_destroy(request);
-
-	if (service->current_request_id == 0)
-		return;
-
-	service->current_request_id = 0;
-
-	process_request_queue(service);
-}
-
 void mms_service_unref(struct mms_service *service)
 {
 	struct mms_request *request;
@@ -920,6 +906,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	gsize written;
 	gsize chunk_size;
 	struct mms_request *request = user_data;
+	struct mms_service *service;
 	const guint8 *chunk;
 
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
@@ -955,7 +942,13 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	return TRUE;
 
 complete:
-	complete_request(request);
+	service = request->service;
+
+	mms_request_destroy(request);
+
+	service->current_request_id = 0;
+
+	process_request_queue(service);
 
 	return FALSE;
 }
