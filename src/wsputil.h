@@ -39,6 +39,58 @@ enum wsp_header_token {
 	WSP_HEADER_TOKEN_APP_ID =	0x2F,
 };
 
+enum wsp_parameter_type {
+	WSP_PARAMETER_TYPE_Q =				0x00,
+	WSP_PARAMETER_TYPE_CHARSET =			0x01,
+	WSP_PARAMETER_TYPE_LEVEL =			0x02,
+	WSP_PARAMETER_TYPE_TYPE =			0x03,
+	WSP_PARAMETER_TYPE_NAME_DEFUNCT =		0x05,
+	WSP_PARAMETER_TYPE_FILENAME_DEFUNCT =		0x06,
+	WSP_PARAMETER_TYPE_DIFFERENCES =		0x07,
+	WSP_PARAMETER_TYPE_PADDING =			0x08,
+	WSP_PARAMETER_TYPE_CONTENT_TYPE =		0x09,
+	WSP_PARAMETER_TYPE_START_DEFUNCT =		0x0A,
+	WSP_PARAMETER_TYPE_START_INFO_DEFUNCT =		0x0B,
+	WSP_PARAMETER_TYPE_COMMENT_DEFUNCT =		0x0C,
+	WSP_PARAMETER_TYPE_DOMAIN_DEFUNCT =		0x0D,
+	WSP_PARAMETER_TYPE_MAX_AGE =			0x0E,
+	WSP_PARAMETER_TYPE_PATH_DEFUNCT =		0x0F,
+	WSP_PARAMETER_TYPE_SECURE =			0x10,
+	WSP_PARAMETER_TYPE_SEC =			0x11,
+	WSP_PARAMETER_TYPE_MAC =			0x12,
+	WSP_PARAMETER_TYPE_CREATION_DATE =		0x13,
+	WSP_PARAMETER_TYPE_MODIFICATION_DATE =		0x14,
+	WSP_PARAMETER_TYPE_READ_DATE =			0x15,
+	WSP_PARAMETER_TYPE_SIZE =			0x16,
+	WSP_PARAMETER_TYPE_NAME =			0x17,
+	WSP_PARAMETER_TYPE_FILENAME =			0x18,
+	WSP_PARAMETER_TYPE_START =			0x19,
+	WSP_PARAMETER_TYPE_START_INFO =			0x1A,
+	WSP_PARAMETER_TYPE_COMMENT =			0x1B,
+	WSP_PARAMETER_TYPE_DOMAIN =			0x1C,
+	WSP_PARAMETER_TYPE_PATH =			0x1D,
+	WSP_PARAMETER_TYPE_UNTYPED =			0xFF,
+};
+
+enum wsp_parameter_value {
+	WSP_PARAMETER_VALUE_TEXT,
+	WSP_PARAMETER_VALUE_INT,
+	WSP_PARAMETER_VALUE_DATE,
+	WSP_PARAMETER_VALUE_Q,
+};
+
+struct wsp_parameter {
+	enum wsp_parameter_type type;
+	enum wsp_parameter_value value;
+	const char *untyped;
+	union {
+		const char *text;
+		unsigned int integer;
+		time_t date;
+		float q;
+	};
+};
+
 struct wsp_header_iter {
 	const unsigned char *pdu;
 	unsigned int max;
@@ -67,6 +119,12 @@ struct wsp_multipart_iter {
 	unsigned int content_type_len;
 	unsigned int headers_len;
 	unsigned int body_len;
+};
+
+struct wsp_parameter_iter {
+	const unsigned char *pdu;
+	unsigned int max;
+	unsigned int pos;
 };
 
 gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
@@ -118,3 +176,8 @@ const void *wsp_multipart_iter_get_body(struct wsp_multipart_iter *mi);
 unsigned int wsp_multipart_iter_get_body_len(struct wsp_multipart_iter *mi);
 gboolean wsp_multipart_iter_close(struct wsp_multipart_iter *mi,
 					struct wsp_header_iter *hi);
+
+void wsp_parameter_iter_init(struct wsp_parameter_iter *pi,
+				const unsigned char *pdu, unsigned int len);
+gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
+					struct wsp_parameter *out_param);

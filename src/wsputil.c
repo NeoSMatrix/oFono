@@ -145,6 +145,25 @@ static const struct wsp_hex_str_entry extension_mimetypes[] = {
 	{ 0xFFFF, NULL },
 };
 
+static const struct wsp_hex_str_entry charset_assignments[] = {
+	{ 0x0000, "*" },
+	{ 0x07EA, "big5" },
+	{ 0x03E8, "iso-10646-ucs-2" },
+	{ 0x0004, "iso-8859-1" },
+	{ 0x0005, "iso-8859-2" },
+	{ 0x0006, "iso-8859-3" },
+	{ 0x0007, "iso-8859-4" },
+	{ 0x0008, "iso-8859-5" },
+	{ 0x0009, "iso-8859-6" },
+	{ 0x000A, "iso-8859-7" },
+	{ 0x000B, "iso-8859-8" },
+	{ 0x000C, "iso-8859-9" },
+	{ 0x0011, "shift_JIS" },
+	{ 0x0003, "us-ascii" },
+	{ 0x006A, "utf-8" },
+	{ 0xFFFF, NULL },
+};
+
 /*
  * Control Characters 0-8, 10-31 and 127.  The tab character is omitted
  * since it is included in the sep chars array and the most generic TEXT
@@ -716,6 +735,253 @@ gboolean wsp_multipart_iter_close(struct wsp_multipart_iter *mi,
 		return FALSE;
 
 	hi->pos += mi->pos;
+
+	return TRUE;
+}
+
+void wsp_parameter_iter_init(struct wsp_parameter_iter *pi,
+				const unsigned char *pdu, unsigned int len)
+{
+	pi->pdu = pdu;
+	pi->max = len;
+	pi->pos = 0;
+}
+
+gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
+					struct wsp_parameter *out)
+{
+	const unsigned char *pdu = pi->pdu + pi->pos;
+	const unsigned char *end = pi->pdu + pi->max;
+	unsigned int token;
+	unsigned int consumed;
+	const char *untyped;
+	const char *value;
+
+	/* Well known parameter token */
+	if (wsp_decode_integer(pdu, end - pdu, &token, &consumed) == TRUE) {
+		pdu += consumed;
+
+		switch (token) {
+		case WSP_PARAMETER_TYPE_LEVEL:
+		case WSP_PARAMETER_TYPE_DIFFERENCES:
+			if (*pdu & 0x80) {
+				unsigned int i = *pdu & 0x7f;
+
+				pdu += 1;
+				pi->pos = pdu - pi->pdu;
+
+				if (out) {
+					out->type = token;
+					out->value = WSP_PARAMETER_VALUE_INT;
+					out->integer = i;
+				}
+
+				return TRUE;
+			}
+
+			/* Fall through to the string case */
+		case WSP_PARAMETER_TYPE_NAME_DEFUNCT:
+		case WSP_PARAMETER_TYPE_FILENAME_DEFUNCT:
+		case WSP_PARAMETER_TYPE_START_DEFUNCT:
+		case WSP_PARAMETER_TYPE_START_INFO_DEFUNCT:
+		case WSP_PARAMETER_TYPE_COMMENT_DEFUNCT:
+		case WSP_PARAMETER_TYPE_DOMAIN_DEFUNCT:
+		case WSP_PARAMETER_TYPE_PATH_DEFUNCT:
+		case WSP_PARAMETER_TYPE_NAME:
+		case WSP_PARAMETER_TYPE_FILENAME:
+		case WSP_PARAMETER_TYPE_START:
+		case WSP_PARAMETER_TYPE_START_INFO:
+		case WSP_PARAMETER_TYPE_COMMENT:
+		case WSP_PARAMETER_TYPE_DOMAIN:
+		case WSP_PARAMETER_TYPE_PATH:
+		case WSP_PARAMETER_TYPE_MAC:
+		{
+			const char *text = wsp_decode_text(pdu, end - pdu,
+								&consumed);
+
+			if (text == NULL)
+				return FALSE;
+
+			pdu += consumed;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_TEXT;
+				out->text = text;
+			}
+
+			return TRUE;
+		}
+
+		case WSP_PARAMETER_TYPE_TYPE:
+		case WSP_PARAMETER_TYPE_SIZE:
+		case WSP_PARAMETER_TYPE_MAX_AGE:
+		{
+			unsigned int i;
+
+			if (wsp_decode_integer(pdu, end - pdu,
+						&i, &consumed) == FALSE)
+				return FALSE;
+
+			pdu += consumed;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_INT;
+				out->integer = i;
+			}
+
+			return TRUE;
+		}
+
+		case WSP_PARAMETER_TYPE_PADDING:
+		case WSP_PARAMETER_TYPE_SEC:
+		{
+			if ((*pdu & 0x80) == 0)
+				return FALSE;
+
+			pdu += 1;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_INT;
+				out->integer = *pdu & 0x7f;
+			}
+
+			return TRUE;
+		}
+
+		case WSP_PARAMETER_TYPE_CREATION_DATE:
+		case WSP_PARAMETER_TYPE_MODIFICATION_DATE:
+		case WSP_PARAMETER_TYPE_READ_DATE:
+		{
+			unsigned int i;
+
+			if (wsp_decode_integer(pdu, end - pdu,
+						&i, &consumed) == FALSE)
+				return FALSE;
+
+			pdu += consumed;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_DATE;
+				out->integer = i;
+			}
+
+			return TRUE;
+		}
+
+		case WSP_PARAMETER_TYPE_SECURE:
+			if (*pdu != 0)
+				return FALSE;
+
+			pdu += 1;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_TEXT;
+				out->text = (const char *) pdu - 1;
+			}
+
+			return TRUE;
+
+		case WSP_PARAMETER_TYPE_CHARSET:
+		{
+			unsigned int i;
+			const char *charset;
+
+			if (wsp_decode_integer(pdu, end - pdu,
+						&i, &consumed) == FALSE)
+				return FALSE;
+
+			charset = get_text_entry(i, charset_assignments);
+			if (charset == NULL)
+				return FALSE;
+
+			pdu += consumed;
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_TEXT;
+				out->text = charset;
+			}
+
+			return TRUE;
+		}
+
+		case WSP_PARAMETER_TYPE_CONTENT_TYPE:
+		{
+			const char *ct;
+			unsigned int consumed;
+
+			if (*pdu & 0x80) {
+				unsigned int i = *pdu & 0x7f;
+
+				if (i >= LAST_CONTENT_TYPE)
+					return FALSE;
+
+				ct = content_types[i];
+				pdu += 1;
+			} else if ((ct = wsp_decode_text(pdu, end - pdu,
+							&consumed)))
+				pdu += consumed;
+			else
+				return FALSE;
+
+			pi->pos = pdu - pi->pdu;
+
+			if (out) {
+				out->type = token;
+				out->value = WSP_PARAMETER_VALUE_TEXT;
+				out->text = ct;
+			}
+
+			return TRUE;
+		}
+
+		/* TODO */
+		case WSP_PARAMETER_TYPE_Q:
+		default:
+			return FALSE;
+		}
+	}
+
+	untyped = wsp_decode_text(pdu, end - pdu, &consumed);
+	if (untyped == NULL)
+		return FALSE;
+
+	pdu += consumed;
+
+	if (wsp_decode_integer(pdu, end - pdu, &token, &consumed) == TRUE) {
+		pdu += consumed;
+		pi->pos = pdu - pi->pdu;
+
+		out->type = WSP_PARAMETER_TYPE_UNTYPED;
+		out->value = WSP_PARAMETER_VALUE_INT;
+		out->integer = token;
+		out->untyped = untyped;
+
+		return TRUE;
+	}
+
+	value = wsp_decode_text(pdu, end - pdu, &consumed);
+	if (value == NULL)
+		return FALSE;
+
+	pdu += consumed;
+	pi->pos = pdu - pi->pdu;
+
+	out->type = WSP_PARAMETER_TYPE_UNTYPED;
+	out->value = WSP_PARAMETER_VALUE_TEXT;
+	out->text = value;
+	out->untyped = untyped;
 
 	return TRUE;
 }
