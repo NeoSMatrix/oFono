@@ -213,7 +213,9 @@ static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
 	DBusMessage *reply;
+	DBusMessageIter iter;
 	struct mms_message msg;
+	const struct mms_service *service;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -232,16 +234,21 @@ static DBusMessage *send_message(DBusConnection *conn,
 	/*
 	 * TODO:
 	 * -encode pdu & store it
-	 * -register new updated dbus message object
 	 * -post gweb send request
-	 * -post AddedMessage dbus signal
 	 */
+
+	service = data;
+	if (mms_message_register(service, &msg) < 0)
+		return __mms_error_trans_failure(dbus_msg);
 
 	reply = dbus_message_new_method_return(dbus_msg);
+	if (reply == NULL)
+		return NULL;
 
-	/*
-	 * TODO set new message object path
-	 */
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+								&msg.path);
 
 	mms_message_free(&msg);
 
