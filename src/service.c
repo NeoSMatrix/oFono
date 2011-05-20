@@ -44,6 +44,8 @@
 #define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
 #define BEARER_IDLE_TIMEOUT	10	/* 10 seconds */
 
+#define uninitialized_var(x) x = x
+
 typedef void (*mms_request_result_cb_t) (guint status, const char *data_path,
 					 gpointer user_data);
 
@@ -607,8 +609,26 @@ static void append_msg_attachments(DBusMessageIter *dict,
 
 	dbus_message_iter_close_container(dict, &entry);
 
-	if (smil != NULL)
+	if (smil == NULL)
+		return;
+
+	switch (msg->type) {
+	case MMS_MESSAGE_TYPE_SEND_REQ:
+		return;
+	case MMS_MESSAGE_TYPE_SEND_CONF:
+		return;
+	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
+		return;
+	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
+		return;
+	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
 		append_smil(dict, smil);
+		break;
+	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
+		return;
+	case MMS_MESSAGE_TYPE_DELIVERY_IND:
+		return;
+	}
 }
 
 static void append_msg_recipients(DBusMessageIter *dict,
@@ -618,7 +638,7 @@ static void append_msg_recipients(DBusMessageIter *dict,
 	DBusMessageIter array;
 	DBusMessageIter entry;
 	DBusMessageIter variant;
-	gchar **tokens;
+	gchar **uninitialized_var(tokens);
 	unsigned int i;
 
 	switch (msg->type) {
@@ -686,6 +706,26 @@ static void append_rc_msg_properties(DBusMessageIter *dict,
 		append_msg_recipients(dict, msg);
 }
 
+static void append_sr_msg_properties(DBusMessageIter *dict,
+					struct mms_message *msg)
+{
+	const char *date = time_to_str(&msg->rc.date);
+	const char *status = "draft";
+
+	mms_dbus_dict_append_basic(dict, "Status",
+					DBUS_TYPE_STRING, &status);
+
+	mms_dbus_dict_append_basic(dict, "Date",
+					DBUS_TYPE_STRING,  &date);
+
+	/* Smil available from message struct */
+	mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING,
+							&msg->sr.smil);
+
+	if (msg->sr.to != NULL)
+		append_msg_recipients(dict, msg);
+}
+
 static void emit_message_added(const struct mms_service *service,
 						struct mms_message *msg)
 {
@@ -708,6 +748,7 @@ static void emit_message_added(const struct mms_service *service,
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
+		append_sr_msg_properties(&dict, msg);
 		break;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 		break;
