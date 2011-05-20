@@ -764,13 +764,19 @@ static void fb_init(struct file_buffer *fb, int fd)
 
 static gboolean fb_flush(struct file_buffer *fb)
 {
+	unsigned int size;
 	ssize_t len;
 
 	if (fb->size == 0)
 		return TRUE;
 
 	len = write(fb->fd, fb->buf, fb->size);
-	if (len != fb->size)
+	if (len < 0)
+		return FALSE;
+
+	size = len;
+
+	if (size != fb->size)
 		return FALSE;
 
 	fb->size = 0;
