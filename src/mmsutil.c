@@ -32,8 +32,8 @@
 #include "wsputil.h"
 #include "mmsutil.h"
 
-#define MAX_TRANS_ID_SIZE 40
-#define FB_SIZE 256
+#define MAX_TRANSACTION_ID_SIZE 40
+
 #define uninitialized_var(x) x = x
 
 typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
@@ -86,6 +86,8 @@ static const struct {
 	{ 0x6A,	"utf-8"		},
 	{ 0x00,	NULL		}
 };
+
+#define FB_SIZE 256
 
 struct file_buffer {
 	unsigned char buf[FB_SIZE];
@@ -754,16 +756,21 @@ void mms_message_free(struct mms_message *msg)
 	}
 }
 
+static void fb_init(struct file_buffer *fb, int fd)
+{
+	fb->size = 0;
+	fb->fd = fd;
+}
+
 static gboolean fb_flush(struct file_buffer *fb)
 {
-	ssize_t ret;
+	ssize_t len;
 
 	if (fb->size == 0)
 		return TRUE;
 
-	ret = write(fb->fd, fb->buf, fb->size);
-
-	if (ret <= 0)
+	len = write(fb->fd, fb->buf, fb->size);
+	if (len != fb->size)
 		return FALSE;
 
 	fb->size = 0;
@@ -771,7 +778,7 @@ static gboolean fb_flush(struct file_buffer *fb)
 	return TRUE;
 }
 
-static void *fb_request_bytes(struct file_buffer *fb, unsigned int count)
+static void *fb_request(struct file_buffer *fb, unsigned int count)
 {
 	if (fb->size + count < FB_SIZE) {
 		void *ptr = fb->buf + fb->size;
@@ -798,29 +805,24 @@ static gboolean mms_encode_header(struct mms_message *msg,
 
 	len = strlen(msg->transaction_id) + 1;
 
-	if (len > MAX_TRANS_ID_SIZE)
+	if (len > MAX_TRANSACTION_ID_SIZE)
 		return FALSE;
 
-	ptr = fb_request_bytes(fb, 2);
+	ptr = fb_request(fb, 2);
 	if (ptr == NULL)
 		return FALSE;
 
 	ptr[0] = MMS_HEADER_MESSAGE_TYPE | 0x80;
 	ptr[1] = msg->type | 0x80;
 
-	ptr = fb_request_bytes(fb, 1);
+	ptr = fb_request(fb, len + 1);
 	if (ptr == NULL)
 		return FALSE;
 
 	ptr[0] = MMS_HEADER_TRANSACTION_ID | 0x80;
+	strcpy(ptr + 1, msg->transaction_id);
 
-	ptr = fb_request_bytes(fb, len);
-	if (ptr == NULL)
-		return FALSE;
-
-	strcpy(ptr, msg->transaction_id);
-
-	ptr = fb_request_bytes(fb, 2);
+	ptr = fb_request(fb, 2);
 	if (ptr == NULL)
 		return FALSE;
 
@@ -835,7 +837,7 @@ static gboolean mms_encode_notify_resp_ind(struct mms_message *msg,
 {
 	char *ptr;
 
-	ptr = fb_request_bytes(fb, 2);
+	ptr = fb_request(fb, 2);
 	if (ptr == NULL)
 		return FALSE;
 
@@ -849,8 +851,7 @@ gboolean mms_message_encode(struct mms_message *msg, int fd)
 {
 	struct file_buffer fb;
 
-	fb.size = 0;
-	fb.fd = fd;
+	fb_init(&fb, fd);
 
 	if (mms_encode_header(msg, &fb) == FALSE)
 		return FALSE;
