@@ -87,6 +87,8 @@ static GList *service_list;
 
 static DBusConnection *connection;
 
+static guint32 transaction_id_start = 0;
+
 static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
@@ -434,13 +436,20 @@ static void activate_bearer(struct mms_service *service)
 	service->bearer_handler(TRUE, service->bearer_data);
 }
 
+static inline char *create_transaction_id(void)
+{
+	return g_strdup_printf("%08X%s", transaction_id_start++,
+			       "0123456789ABCDEF0123456789ABCDEF");
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	struct mms_message *msg;
-	struct mms_service *service;
+	struct mms_service *service = data;
+	struct mms_request *request;
 
 	msg = g_new0(struct mms_message, 1);
 	if (msg == NULL)
@@ -459,19 +468,43 @@ static DBusMessage *send_message(DBusConnection *conn,
 		return __mms_error_invalid_args(dbus_msg);
 	}
 
-	/*
-	 * TODO:
-	 * -encode pdu & store it
-	 * -post gweb send request
-	 */
+	msg->transaction_id = create_transaction_id();
+	if (msg->transaction_id == NULL)
+		return __mms_error_trans_failure(dbus_msg);
 
-	service = data;
+	request = create_request(MMS_REQUEST_TYPE_POST, NULL, NULL, service);
+	if (request == NULL)
+		return __mms_error_trans_failure(dbus_msg);
+
+	if (mms_message_encode(msg, request->fd) == FALSE) {
+		mms_request_destroy(request);
+		return __mms_error_trans_failure(dbus_msg);
+	}
+
+	close(request->fd);
+
+	msg->uuid = g_strdup(mms_store_file(service->identity,
+					    request->data_path));
+
 	if (mms_message_register(service, msg) < 0) {
 		mms_message_free(msg);
 		g_free(msg);
 
+		mms_request_destroy(request);
+
 		return __mms_error_trans_failure(dbus_msg);
 	}
+
+	g_free(request->data_path);
+
+	request->data_path = g_strdup_printf("%s/.mms/%s/%s", g_get_home_dir(),
+					     service->identity, msg->uuid);
+
+	request->fd = open(request->data_path, O_RDONLY);
+
+	g_queue_push_tail(service->request_queue, request);
+
+	activate_bearer(service);
 
 	reply = dbus_message_new_method_return(dbus_msg);
 	if (reply == NULL)
