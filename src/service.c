@@ -388,6 +388,46 @@ static struct mms_request *create_request(enum mms_request_type type,
 	return request;
 }
 
+static gboolean bearer_setup_timeout(gpointer user_data)
+{
+	struct mms_service *service = user_data;
+
+	DBG("service %p", service);
+
+	service->bearer_timeout = 0;
+
+	service->bearer_setup = FALSE;
+
+	return FALSE;
+}
+
+static void process_request_queue(struct mms_service *service);
+
+static void activate_bearer(struct mms_service *service)
+{
+	DBG("service %p", service);
+
+	if (service->bearer_setup == TRUE)
+		return;
+
+	if (service->bearer_active == TRUE) {
+		process_request_queue(service);
+		return;
+	}
+
+	if (service->bearer_handler == NULL)
+		return;
+
+	DBG("service %p", service);
+
+	service->bearer_setup = TRUE;
+
+	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
+						bearer_setup_timeout, service);
+
+	service->bearer_handler(TRUE, service->bearer_data);
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
@@ -485,8 +525,6 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 
 	return service;
 }
-
-static void process_request_queue(struct mms_service *service);
 
 void mms_service_unref(struct mms_service *service)
 {
@@ -1031,42 +1069,6 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 	service->bearer_data = user_data;
 
 	return 0;
-}
-
-static gboolean bearer_setup_timeout(gpointer user_data)
-{
-	struct mms_service *service = user_data;
-
-	DBG("service %p", service);
-
-	service->bearer_timeout = 0;
-	service->bearer_setup = FALSE;
-
-	return FALSE;
-}
-
-static void activate_bearer(struct mms_service *service)
-{
-	DBG("service %p", service);
-
-	if (service->bearer_setup == TRUE)
-		return;
-
-	if (service->bearer_active == TRUE) {
-		process_request_queue(service);
-		return;
-	}
-
-	if (service->bearer_handler == NULL)
-		return;
-
-	DBG("service %p", service);
-
-	service->bearer_setup = TRUE;
-	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
-						bearer_setup_timeout, service);
-
-	service->bearer_handler(TRUE, service->bearer_data);
 }
 
 static void deactivate_bearer(struct mms_service *service)
