@@ -346,6 +346,48 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 	return send_message_get_attachments(&top_iter, msg);
 }
 
+static struct mms_request *create_request(enum mms_request_type type,
+					  mms_request_result_cb_t result_cb)
+{
+	struct mms_request *request;
+
+	request = g_try_new0(struct mms_request, 1);
+	if (request == NULL)
+		return NULL;
+
+	request->type = type;
+
+	switch (request->type) {
+	case MMS_REQUEST_TYPE_GET:
+		request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
+						"/.mms/receive.XXXXXX.mms");
+
+		break;
+	case MMS_REQUEST_TYPE_POST:
+		request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
+						"/.mms/send.XXXXXX.mms");
+
+		break;
+	}
+
+	request->recv_fd = g_mkstemp_full(request->data_path,
+					  O_WRONLY | O_CREAT | O_TRUNC,
+					  S_IWUSR | S_IRUSR);
+	if (request->recv_fd < 0) {
+		g_free(request->data_path);
+
+		g_free(request);
+
+		return NULL;
+	}
+
+	request->result_cb = result_cb;
+
+	request->status = 0;
+
+	return request;
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
@@ -1253,32 +1295,6 @@ static void dump_notification_ind(struct mms_message *msg)
 	mms_info("Location: %s\n", msg->ni.location);
 }
 
-static struct mms_request *create_get_request(mms_request_result_cb_t result_cb)
-{
-	struct mms_request *request;
-
-	request = g_try_new0(struct mms_request, 1);
-	if (request == NULL)
-		return NULL;
-
-	request->type = MMS_REQUEST_TYPE_GET;
-	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
-						"/.mms/receive.XXXXXX.mms");
-	request->recv_fd = g_mkstemp_full(request->data_path,
-					  O_WRONLY | O_CREAT | O_TRUNC,
-					  S_IWUSR | S_IRUSR);
-	if (request->recv_fd < 0) {
-		g_free(request);
-
-		return NULL;
-	}
-
-	request->result_cb = result_cb;
-	request->status = 0;
-
-	return request;
-}
-
 void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
@@ -1315,7 +1331,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
-	request = create_get_request(result_request);
+	request = create_request(MMS_REQUEST_TYPE_GET, result_request);
 	if (request == NULL)
 		goto out;
 
