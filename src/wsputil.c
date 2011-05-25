@@ -593,6 +593,11 @@ enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter)
 	return iter->header_type;
 }
 
+const unsigned char *wsp_header_iter_get_pdu(struct wsp_header_iter *iter)
+{
+	return iter->pdu;
+}
+
 const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter)
 {
 	return iter->header;

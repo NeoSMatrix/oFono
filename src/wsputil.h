@@ -157,6 +157,7 @@ gboolean wsp_header_iter_at_end(struct wsp_header_iter *iter);
 gboolean wsp_header_iter_is_multipart(struct wsp_header_iter *iter);
 
 enum wsp_header_type wsp_header_iter_get_hdr_type(struct wsp_header_iter *iter);
+const unsigned char *wsp_header_iter_get_pdu(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_hdr(struct wsp_header_iter *iter);
 enum wsp_value_type wsp_header_iter_get_val_type(struct wsp_header_iter *iter);
 const void *wsp_header_iter_get_val(struct wsp_header_iter *iter);
