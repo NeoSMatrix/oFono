@@ -8,3 +8,178 @@ Background
    lowest complexity. Complexity is a function of both task 'complexity'
    and task 'scope'.
 
+  The general rule of thumb is that a complexity 1 task should take 1-2 weeks
+  for a person very familiar with mmsd codebase.  Higher complexity tasks
+  require more time and have higher uncertainty.
+
+  Higher complexity tasks should be refined into several lower complexity tasks
+  once the task is better understood.
+
+
+MMS Submission
+==============
+
+- Add HTTP GWeb POST request support.
+  This feature integration should be consistent with what has already be done
+  for the HTTP GWeb GET request support.
+
+  Priority: High
+  Complexity: C2
+  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
+
+- Add MMS M-Send.Req PDU encoding support.
+  The M-Send.Req PDU has to be encoded from the data retrieved in the
+  mms_message structure into a temporary file. The encoding has to be
+  consistent with the encoding of the already existing M-NotifyResp.Ind PDU
+  encoding implementation.
+
+  Priority: High
+  Complexity: C2
+  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
+
+- Add MMS submit support.
+  Upon the reception of a Dbus Service: SendMessage Request, the mms_message
+  structure is filled with the information extracted from the D-Bus request.
+  A new D-Bus MMS message object is registered, and a Dbus Service Signal
+  “MessageAdded” is emitted. This implementation needs to be completed with the
+  the encoding of a M-Send-Req PDU (requires to generate a transaction id),
+  its addition to the store and the creation of a new entry in the META file
+  (status: draft). A HTTP POST request must be initiated to send the M-Send-Req
+  PDU to the MMSC. The HTTP POST request callback has to be implemented to
+  process the request result.
+  If the HTTP POST request is completed successfully, the HTTP POST response
+  result file (M-Send.Conf) PDU must be decoded to get the request result
+  (a message id should also be provided in this case, and may be stored in the
+  META information), if the submit request has been accepted by the MMSC the
+  META file entry for the M-Send-Req must be updated (status: draft -> sent),
+  the MMS message object status property changed (status: draft -> sent) and
+  the Dbus Service: SendMessage Request asynchronous reply sent back to the
+  caller.
+  In case of error (HTTP communication error, MMSC rejection of the submit
+  request), the SendMessage Request asynchronous reply should also be sent with
+  the appropriate DBus error status (see __mms_error_XXXX).
+
+  Priority: High
+  Complexity: C4
+  Depends: MMS M-Send.Req PDU encoding support, META file support,
+  "org.ofono.mms.Message" interface implementation.
+  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
+
+MMS Reception
+=============
+
+- Add MMS M-Retrieve.conf PDU decoding support.
+  The M-Retrieve.conf PDU has to be decoded in order to fill the mms_message
+  structure.
+
+  Priority: High
+  Complexity: C2
+  Owner: Regis Merlino <regis.merlino@linux.intel.com>
+
+- Add MMS Automatic Retrieval support.
+  Add the M-Notify.Ind PDU entry to the META file (status: notify.ind).
+  Initiate a HTTP GET Request with the "Content Location" URI provided in the
+  M-Notify.Ind PDU.
+  Implement the HTTP GET request callback to process the request result.
+  if the the HTTP GET operation is completed successfully, the retrieved
+  M-Retrieve.Conf PDU file has to be parsed and added to the store.
+  META file has to be updated too: the M-Notify.Ind PDU entry has to be removed
+  and a new entry for the M-Retrieve.Conf PDU has to be created
+  (status: retrieve.conf).
+  In order to complete the transaction a M-NotifyResp.ind PDU must be encoded
+  with the "retrieved" status and the M-Notify.Ind PDU transaction ID.
+  This PDU has to be temporarily stored.
+  A HTTP POST request must be initiated to send the M-NotifyResp.ind PDU to the
+  MMSC. If the HTTP POST request is completed successfully the META file entry
+  for the M-Retrieve.Conf PDU has to be updated (status: retrieve.conf ->
+  received), a DBus Message object has to be registered (see 
+  mms_message_register()) and the Dbus Service Signal “MessageAdded” emitted.
+  Error cases should handled and reported to the application layer.
+
+  Priority: High
+  Complexity: C4
+  Depends: META file support, MMS M-Retrieve.conf PDU decoding support,
+  "org.ofono.mms.Message" interface implementation, HTTP GWeb POST request
+  support.
+  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
+
+MMS Storage
+===========
+
+- Add META file handling support.
+  A single META file including all the current MMS PDU SHA1 and information
+  about their "status" is needed.
+  The proposed first implementation should use a key-value file format with the
+  PDUs SHA1 used as group entry, and a "status" as a key.
+  If later on, with some measurement we notice that the implementation is not
+  efficient enough when the system has 2000 or more messages, we should
+  consider to re-implement the feature in a smarter way.
+  Helper functions should make easy Addition/Removal/Update of group entries
+  and key values.
+  The "status" key value should reflect the PDU status as well as its
+  transaction completion state.
+
+  "status" key possible values:
+	sent -> message has successfully been sent
+	received -> message has successfully been received
+	draft -> message waiting to the be sent
+	read -> a "received" message marked as "read" by the user
+	notify.ind -> a message not yet retrieved
+	retrieve.conf -> a message retrieved but for which the
+	  "Notify-resp.ind" has not been sent.
+
+  META file entry example:
+  [A55BC58DEFGHJ445K9H8E199A674227C9C0C9UDZ]
+  status = received
+
+  Priority: High
+  Complexity: C2
+  Owner: Regis Merlino <regis.merlino@linux.intel.com>
+
+- Add pending/incompleted transactions recovery on mmsd restart.
+  In the case of a restart of the mmsd, all the incomplete/pending MMS
+  transactions identified thanks to the META file information
+  (status key value) should be re-processed (i.e.: added to the mms_service 
+  structure request_queue).
+
+  Priority: Medium
+  Complexity: C2
+  Depends: META file support, MMS submit support.
+  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
+
+D-Bus API
+=========
+
+- Add the "org.ofono.mms.Message" interface implementation.
+  The D-Bus Message API documentation is available under /doc/message-api.txt.
+
+  Priority: High
+  Complexity: C2
+  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
+
+- Add the "org.ofono.mms.Service" interface "GetMessages" method
+  implementation.
+  The D-Bus Message API documentation is available under /doc/service-api.txt.
+
+  Priority: Medium
+  Complexity: C2
+
+- Add the "org.ofono.mms.Service" interface "GetConversation" method 
+  implementation.
+  The D-Bus Message API documentation is available under /doc/service-api.txt.
+
+  Priority: Low
+  Complexity: C4
+
+Miscellaneous
+=============
+
+- Add OMA MMS M-Retrieve.conf decoding mandatory test cases to the unit tests.
+  PDU for these tests cases should be added as data files to the unit tests.
+  The test PDUs should use the media content sample provided by the OMA.
+  Applicable test cases are available in "OMA Enabler Test Specification for
+  (Conformance) for MMS" [OMA-ETS-MMS_CON-V1_3-20101015-C].
+
+  Complexity: C1
+  Priority: Low
+  Owner: Christophe Guiraud <christophe.guiraud@linux.intel.com>
