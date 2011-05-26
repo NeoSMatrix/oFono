@@ -238,6 +238,24 @@ static const unsigned char mms_m_notify_ind_2[] = {
 };
 
 /*
+ * MMS M-Notify.Ind PDU 3
+ * MMS-1.3-con-271: Long Subject field.
+ * This PDU shows the decoding of a M-Notify.Ind PDU with a maximum length
+ * "us-ascii" encoded "subject" field value (40 characters) and below content:
+ * Overall message size: 121
+ * MMS message type: notification-ind
+ * MMS transaction id: OgQKKB
+ * MMS version: 1.0
+ * From: +44123989100/TYPE=PLMN
+ * Subject: abcdefghijklmnopqrstuvwxyz0123456789/-+@
+ * Class: Personal
+ * Size: 23069
+ * Expiry: 2011-05-27T10:39:58+0200
+ * Location: http://eps3.de/O/Z9IZO
+ */
+static const char mms_m_notify_ind_3[] = "./ni-mms-1-3-con-271.mms";
+
+/*
  * MMS M-Retrieve.Conf PDU 1
  * This PDU shows the decoding of a M-Retrieve.Conf PDU with an "us-ascii"
  * encoded text "subject" field and below content:
@@ -410,6 +428,10 @@ static const struct mms_test mms_m_notify_ind_test_2 = {
 	.len = sizeof(mms_m_notify_ind_2),
 };
 
+static const struct mms_test mms_m_notify_ind_test_3 = {
+	.pathname = mms_m_notify_ind_3,
+};
+
 static const struct mms_test mms_m_retrieve_conf_test_1 = {
 	.pdu = mms_m_retrieve_conf_1,
 	.len = sizeof(mms_m_retrieve_conf_1),
@@ -576,6 +598,8 @@ int main(int argc, char **argv)
 				&mms_m_notify_ind_test_1, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Notify.Ind PDU 2",
 				&mms_m_notify_ind_test_2, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Notify.Ind PDU 3",
+				&mms_m_notify_ind_test_3, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 1",
 				&mms_m_retrieve_conf_test_1, test_decode_mms);
