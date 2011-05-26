@@ -55,7 +55,10 @@ test_scripts = test/monitor-mms test/get-services test/send-message
 doc_files = doc/architecture.txt doc/consumer.txt doc/manager-api.txt \
 				doc/service-api.txt doc/message-api.txt
 
-EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files)
+unit_test_data_files = unit/ni-mms-1-3-con-271.mms
+
+EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files) \
+					$(unit_test_data_files)
 
 noinst_PROGRAMS = unit/test-wsputil unit/test-mmsutil \
 			tools/decode-mms tools/create-hex-array
