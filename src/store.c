@@ -137,6 +137,8 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 	}
 
 	size = write(fd, pdu, len);
+	if (size < 0)
+		mms_error("Failed to write to %s", pathname->str);
 
 	fdatasync(fd);
 
