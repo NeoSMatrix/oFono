@@ -373,6 +373,36 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 	return TRUE;
 }
 
+gboolean wsp_get_well_known_content_type(const char* text,
+							unsigned int *out_val)
+{
+	unsigned int i;
+
+	for (i = 0; i < LAST_CONTENT_TYPE; i++) {
+		if (g_str_equal(text, content_types[i]) == TRUE) {
+			*out_val = i;
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+gboolean wsp_get_well_known_charset(const char* text, unsigned int *out_val)
+{
+	unsigned int i;
+
+	for (i = 0; charset_assignments[i].type_str != NULL; i++) {
+		if (g_str_equal(charset_assignments[i].type_str,
+							text) == TRUE) {
+			*out_val = charset_assignments[i].type;
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 static const char *get_text_entry(unsigned int value,
 					const struct wsp_hex_str_entry *table)
 {

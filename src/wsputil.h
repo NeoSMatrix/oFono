@@ -136,6 +136,9 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 					const void **out_value,
 					unsigned int *out_len,
 					unsigned int *consumed);
+gboolean wsp_get_well_known_content_type(const char* text,
+							unsigned int *out_val);
+gboolean wsp_get_well_known_charset(const char* text, unsigned int *out_val);
 const char *wsp_decode_token_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
 const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
