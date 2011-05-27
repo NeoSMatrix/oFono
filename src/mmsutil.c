@@ -378,13 +378,11 @@ static gboolean extract_priority(struct wsp_header_iter *iter, void *user)
 {
 	char **out = user;
 	const unsigned char *p;
-	unsigned int l;
 
 	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
 		return FALSE;
 
 	p = wsp_header_iter_get_val(iter);
-	l = wsp_header_iter_get_val_len(iter);
 
 	switch (p[0]) {
 	case 128:
