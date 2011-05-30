@@ -347,7 +347,9 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 }
 
 static struct mms_request *create_request(enum mms_request_type type,
-					  mms_request_result_cb_t result_cb)
+					  mms_request_result_cb_t result_cb,
+					  char *location,
+					  struct mms_service *service)
 {
 	struct mms_request *request;
 
@@ -382,6 +384,10 @@ static struct mms_request *create_request(enum mms_request_type type,
 	}
 
 	request->result_cb = result_cb;
+
+	request->location = location;
+
+	request->service = service;
 
 	request->status = 0;
 
@@ -1305,6 +1311,7 @@ void mms_service_push_notify(struct mms_service *service,
 	unsigned int nread;
 	const char *uuid;
 	GKeyFile *meta;
+	char *location;
 
 	DBG("service %p data %p len %d", service, data, len);
 
@@ -1333,14 +1340,17 @@ void mms_service_push_notify(struct mms_service *service,
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
-	request = create_request(MMS_REQUEST_TYPE_GET, result_request);
-	if (request == NULL)
+	location = g_strdup(msg.ni.location);
+
+	request = create_request(MMS_REQUEST_TYPE_GET,
+				 result_request, location, service);
+	if (request == NULL) {
+		g_free(location);
+
 		goto out;
+	}
 
 	msg.uuid = g_strdup(uuid);
-
-	request->location = g_strdup(msg.ni.location);
-	request->service = service;
 
 	g_queue_push_tail(service->request_queue, request);
 
