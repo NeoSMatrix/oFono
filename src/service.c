@@ -43,6 +43,8 @@
 
 #define BEARER_SETUP_TIMEOUT	20	/* 20 seconds */
 #define BEARER_IDLE_TIMEOUT	10	/* 10 seconds */
+#define CHUNK_SIZE 2048                 /* 2 Kib */
+#define DEFAULT_CONTENT_TYPE "application/vnd.wap.mms-message"
 
 #define uninitialized_var(x) x = x
 
@@ -1280,6 +1282,14 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	struct mms_service *service;
 	const guint8 *chunk;
 
+	if (request->data != NULL) {
+		munmap(request->data, request->data_size);
+
+		request->data = NULL;
+
+		request->data_size = 0;
+	}
+
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
 		goto error;
 
@@ -1325,10 +1335,45 @@ complete:
 	return FALSE;
 }
 
+static gboolean web_post_cb(const guint8 **data, gsize *length,
+			    gpointer user_data)
+{
+	struct mms_request *request = user_data;
+
+	*data = request->data + request->offset;
+
+	if (request->offset + CHUNK_SIZE > request->data_size)
+		*length = request->data_size - request->offset;
+	else
+		*length = CHUNK_SIZE;
+
+	request->offset += *length;
+
+	if (request->offset < request->data_size)
+		return TRUE;
+
+	/* data transfer complete */
+
+	g_free(request->data_path);
+
+	request->data_path = g_strdup_printf("%s/.mms/send-conf.XXXXXX.mms",
+					     g_get_home_dir());
+
+	request->fd = g_mkstemp_full(request->data_path,
+				     O_WRONLY | O_CREAT | O_TRUNC,
+				     S_IWUSR | S_IRUSR);
+
+	return FALSE;
+}
+
 static guint process_request(struct mms_request *request)
 {
 	struct mms_service *service = request->service;
 	guint id;
+	struct stat status;
+
+	if (request->data_path == NULL)
+		return 0;
 
 	switch (request->type) {
 	case MMS_REQUEST_TYPE_GET:
@@ -1336,14 +1381,43 @@ static guint process_request(struct mms_request *request)
 					web_get_cb, request);
 		if (id == 0) {
 			close(request->fd);
-			unlink(request->data_path);
+			break;
 		}
 
 		return id;
 
 	case MMS_REQUEST_TYPE_POST:
-		break;
+		if (g_stat(request->data_path, &status) != 0) {
+			close(request->fd);
+			break;
+		}
+
+		request->data_size = status.st_size;
+
+		request->data = mmap(NULL, request->data_size, PROT_READ,
+				     MAP_SHARED, request->fd, 0);
+
+		close(request->fd);
+
+		if (request->data == NULL || request->data == MAP_FAILED) {
+			g_printerr("Failed to mmap %s\n", request->data_path);
+			break;
+		}
+
+		request->offset = 0;
+
+		id = g_web_request_post(service->web, service->mmsc,
+					DEFAULT_CONTENT_TYPE, web_post_cb,
+					web_get_cb, request);
+		if (id == 0) {
+			munmap(request->data, request->data_size);
+			break;
+		}
+
+		return id;
 	}
+
+	unlink(request->data_path);
 
 	return 0;
 }
