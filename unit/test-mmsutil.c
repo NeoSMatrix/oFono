@@ -398,6 +398,25 @@ static const unsigned char mms_m_retrieve_conf_3[] = {
 };
 
 /*
+ * MMS M-Retrieve.Conf PDU 4
+ * MMS-1.3-con-210: Long Media Content-Location header field value.
+ * This PDU shows the decoding of a M-Retrieve.Conf PDU where a SMIL part
+ * references an object using a long "Content-Location" field value.
+ * Overall message size: 2767
+ * MMS message type: retrieve-conf
+ * MMS transaction id: 00000000210
+ * MMS version: 1.3
+ * From: +33611111111/TYPE=PLMN
+ * To: +33622222222/TYPE=PLMN
+ * Subject: MMS-1.3-con-210
+ * Class: (null)
+ * Priority: (null)
+ * Msg-Id: (null)
+ * Date: 2011-05-31T10:42:30+0200
+ */
+static const char mms_m_retrieve_conf_4[] = "./rc-mms-1-3-con-210.mms";
+
+/*
  * MMS M-Send.Conf PDU 1
  * This PDU shows the decoding of a M-Send.Conf PDU with an accepted "response
  * status" and a below content:
@@ -468,6 +487,10 @@ static const struct mms_test mms_m_retrieve_conf_test_2 = {
 static const struct mms_test mms_m_retrieve_conf_test_3 = {
 	.pdu = mms_m_retrieve_conf_3,
 	.len = sizeof(mms_m_retrieve_conf_3),
+};
+
+static const struct mms_test mms_m_retrieve_conf_test_4 = {
+	.pathname = mms_m_retrieve_conf_4,
 };
 
 static const struct mms_test mms_m_send_conf_test_1 = {
@@ -632,6 +655,8 @@ int main(int argc, char **argv)
 				&mms_m_retrieve_conf_test_2, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 3",
 				&mms_m_retrieve_conf_test_3, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 4",
+				&mms_m_retrieve_conf_test_4, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 1",
 				&mms_m_send_conf_test_1, test_decode_mms);
