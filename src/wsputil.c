@@ -553,6 +553,43 @@ gboolean wsp_encode_value_length(unsigned int len, unsigned char *dest,
 	return TRUE;
 }
 
+gboolean wsp_encode_integer(unsigned int value, unsigned char *dest,
+				unsigned int dest_size, unsigned int *written)
+{
+	unsigned char moi[sizeof(unsigned int)];
+	unsigned int count;
+
+	if (dest == NULL || written == NULL)
+		return FALSE;
+
+	if (dest_size < 1)
+		return FALSE;
+
+	if (value < 0x80) {
+		*dest = value | 0x80;
+
+		*written = 1;
+
+		return TRUE;
+	}
+
+	for (count = 0; count < sizeof(unsigned int) && value; count++) {
+		moi[count] = value & 0xFF;
+		value = value >> 8;
+	}
+
+	if (count + 1 > dest_size)
+		return FALSE;
+
+	*written = count + 1;
+
+	*dest++ = count;
+
+	for (; count > 0; count--)
+		*dest++ = moi[count - 1];
+
+	return TRUE;
+}
 
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,

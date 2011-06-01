@@ -153,6 +153,8 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 				unsigned int dest_size, unsigned int *written);
 gboolean wsp_encode_value_length(unsigned int len, unsigned char *dest,
 				unsigned int dest_size, unsigned int *written);
+gboolean wsp_encode_integer(unsigned int value, unsigned char *dest,
+				unsigned int dest_size, unsigned int *written);
 
 void wsp_header_iter_init(struct wsp_header_iter *iter,
 				const unsigned char *pdu, unsigned int len,
