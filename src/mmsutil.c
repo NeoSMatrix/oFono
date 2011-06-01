@@ -663,12 +663,16 @@ static gboolean decode_send_conf(struct wsp_header_iter *iter,
 gboolean mms_message_decode(const unsigned char *pdu,
 				unsigned int len, struct mms_message *out)
 {
+	unsigned int flags = 0;
 	struct wsp_header_iter iter;
 	const unsigned char *p;
 	unsigned char octet;
 
 	memset(out, 0, sizeof(*out));
-	wsp_header_iter_init(&iter, pdu, len, WSP_HEADER_ITER_FLAG_REJECT_CP);
+
+	flags |= WSP_HEADER_ITER_FLAG_REJECT_CP;
+	flags |= WSP_HEADER_ITER_FLAG_DETECT_MMS_MULTIPART;
+	wsp_header_iter_init(&iter, pdu, len, flags);
 
 	CHECK_WELL_KNOWN_HDR(MMS_HEADER_MESSAGE_TYPE);
 
