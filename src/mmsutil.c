@@ -41,6 +41,7 @@ typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
 enum header_flag {
 	HEADER_FLAG_MANDATORY =			1,
 	HEADER_FLAG_ALLOW_MULTI =		2,
+	HEADER_FLAG_PRESET_POS =		4,
 	HEADER_FLAG_MARKED =			8,
 };
 
@@ -514,21 +515,22 @@ static header_handler handler_for_type(enum mms_header header)
 struct header_handler_entry {
 	int flags;
 	void *data;
+	int pos;
 };
 
 static gboolean mms_parse_headers(struct wsp_header_iter *iter,
-					enum mms_header header, ...)
+					enum mms_header orig_header, ...)
 {
 	struct header_handler_entry entries[__MMS_HEADER_MAX + 1];
 	va_list args;
 	const unsigned char *p;
-	int i;
-	int expected_version_pos = 1;
-	int version_pos = 0;
+	unsigned int i;
+	enum mms_header header;
 
 	memset(&entries, 0, sizeof(entries));
 
-	va_start(args, header);
+	va_start(args, orig_header);
+	header = orig_header;
 
 	while (header != MMS_HEADER_INVALID) {
 		entries[header].flags = va_arg(args, int);
@@ -564,15 +566,11 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		if (handler == NULL)
 			return FALSE;
 
+		/* Parse the header */
 		if (handler(iter, entries[h].data) == FALSE)
 			return FALSE;
 
-		if (h == MMS_HEADER_TRANSACTION_ID)
-			expected_version_pos += 1;
-		else if (h == MMS_HEADER_MMS_VERSION)
-			version_pos = i;
-
-		/* Parse the header */
+		entries[h].pos = i;
 		entries[h].flags |= HEADER_FLAG_MARKED;
 	}
 
@@ -582,8 +580,37 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 			return FALSE;
 	}
 
-	if (version_pos != expected_version_pos)
-		return FALSE;
+	/*
+	 * Here we check for header positions.  This function assumes that
+	 * headers marked with PRESET_POS are in the beginning of the message
+	 * and follow the same order as given in the va_arg list.  The headers
+	 * marked this way have to be contiguous.
+	 */
+	for (i = 0; i < __MMS_HEADER_MAX + 1; i++) {
+		int check_flags = HEADER_FLAG_PRESET_POS | HEADER_FLAG_MARKED;
+		int expected_pos = 1;
+
+		if ((entries[i].flags & check_flags) != check_flags)
+			continue;
+
+		va_start(args, orig_header);
+		header = orig_header;
+
+		while (header != MMS_HEADER_INVALID && header != i) {
+			va_arg(args, int);
+			va_arg(args, void *);
+
+			if (entries[header].flags & HEADER_FLAG_MARKED)
+				expected_pos += 1;
+
+			header = va_arg(args, enum mms_header);
+		}
+
+		va_end(args);
+
+		if (entries[i].pos != expected_pos)
+			return FALSE;
+	}
 
 	return TRUE;
 }
@@ -592,9 +619,11 @@ static gboolean decode_notification_ind(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
 	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
-				HEADER_FLAG_MANDATORY, &out->transaction_id,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->transaction_id,
 				MMS_HEADER_MMS_VERSION,
-				HEADER_FLAG_MANDATORY, &out->version,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->version,
 				MMS_HEADER_FROM,
 				0, &out->ni.from,
 				MMS_HEADER_SUBJECT,
@@ -614,9 +643,10 @@ static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
 	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
-				0, &out->transaction_id,
+				HEADER_FLAG_PRESET_POS, &out->transaction_id,
 				MMS_HEADER_MMS_VERSION,
-				HEADER_FLAG_MANDATORY, &out->version,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->version,
 				MMS_HEADER_FROM,
 				0, &out->rc.from,
 				MMS_HEADER_TO,
@@ -638,9 +668,11 @@ static gboolean decode_send_conf(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
 	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
-				HEADER_FLAG_MANDATORY, &out->transaction_id,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->transaction_id,
 				MMS_HEADER_MMS_VERSION,
-				HEADER_FLAG_MANDATORY, &out->version,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->version,
 				MMS_HEADER_RESPONSE_STATUS,
 				HEADER_FLAG_MANDATORY, &out->sc.rsp_status,
 				MMS_HEADER_MESSAGE_ID,
