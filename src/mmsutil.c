@@ -40,6 +40,7 @@ typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
 
 enum header_flag {
 	HEADER_FLAG_MANDATORY =			1,
+	HEADER_FLAG_ALLOW_MULTI =		2,
 	HEADER_FLAG_MARKED =			8,
 };
 
@@ -554,9 +555,9 @@ static gboolean mms_parse_headers(struct wsp_header_iter *iter,
 		if (entries[h].data == NULL)
 			continue;
 
-		/* Skip multiply present headers except for To */
-		if ((entries[h].flags & HEADER_FLAG_MARKED)
-					&& h != MMS_HEADER_TO)
+		/* Skip multiply present headers unless explicitly requested */
+		if ((entries[h].flags & HEADER_FLAG_MARKED) &&
+				!(entries[h].flags & HEADER_FLAG_ALLOW_MULTI))
 			continue;
 
 		handler = handler_for_type(h);
@@ -619,7 +620,7 @@ static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 				MMS_HEADER_FROM,
 				0, &out->rc.from,
 				MMS_HEADER_TO,
-				0, &out->rc.to,
+				HEADER_FLAG_ALLOW_MULTI, &out->rc.to,
 				MMS_HEADER_SUBJECT,
 				0, &out->rc.subject,
 				MMS_HEADER_MESSAGE_CLASS,
