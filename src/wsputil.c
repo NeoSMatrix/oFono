@@ -161,6 +161,7 @@ static const struct wsp_hex_str_entry charset_assignments[] = {
 	{ 0x0011, "shift_JIS" },
 	{ 0x0003, "us-ascii" },
 	{ 0x006A, "utf-8" },
+	{ 0x03F7, "utf-16" },
 	{ 0xFFFF, NULL },
 };
 
