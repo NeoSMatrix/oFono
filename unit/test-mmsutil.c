@@ -493,6 +493,25 @@ static const char mms_m_retrieve_conf_7[] = "./rc-mms-1-3-con-213.mms";
 static const char mms_m_retrieve_conf_8[] = "./rc-mms-1-3-con-214.mms";
 
 /*
+ * MMS M-Retrieve.Conf PDU 9
+ * MMS-1.3-con-216: JPG Image size 160x120.
+ * This PDU shows the decoding of a M-Retrieve.Conf PDU with a 160x120 JPG
+ * Image object and below content:
+ * Overall message size: 114440
+ * MMS message type: retrieve-conf
+ * MMS transaction id: 00000000216
+ * MMS version: 1.3
+ * From: +33622222222/TYPE=PLMN
+ * To: +33666565565/TYPE=PLMN
+ * Subject: MMS-1.3-con-216
+ * Class: (null)
+ * Priority: (null)
+ * Msg-Id: (null)
+ * Date: 2011-06-03T15:08:09+0200
+ */
+static const char mms_m_retrieve_conf_9[] = "./rc-mms-1-3-con-216.mms";
+
+/*
  * MMS M-Send.Conf PDU 1
  * This PDU shows the decoding of a M-Send.Conf PDU with an accepted "response
  * status" and a below content:
@@ -583,6 +602,10 @@ static const struct mms_test mms_m_retrieve_conf_test_7 = {
 
 static const struct mms_test mms_m_retrieve_conf_test_8 = {
 	.pathname = mms_m_retrieve_conf_8,
+};
+
+static const struct mms_test mms_m_retrieve_conf_test_9 = {
+	.pathname = mms_m_retrieve_conf_9,
 };
 
 static const struct mms_test mms_m_send_conf_test_1 = {
@@ -757,6 +780,8 @@ int main(int argc, char **argv)
 				&mms_m_retrieve_conf_test_7, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 8",
 				&mms_m_retrieve_conf_test_8, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 9",
+				&mms_m_retrieve_conf_test_9, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 1",
 				&mms_m_send_conf_test_1, test_decode_mms);
