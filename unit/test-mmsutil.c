@@ -512,6 +512,15 @@ static const char mms_m_retrieve_conf_8[] = "./rc-mms-1-3-con-214.mms";
 static const char mms_m_retrieve_conf_9[] = "./rc-mms-1-3-con-216.mms";
 
 /*
+ * MMS M-Retrieve.Conf PDU 10
+ * MMS-1.3-con-220: GIF Image size 160x120.
+ * This PDU shows the decoding of a M-Retrieve.Conf PDU with a 160x120 GIF87a
+ * Image object and below content:
+
+ */
+static const char mms_m_retrieve_conf_10[] = "./rc-mms-1-3-con-220.mms";
+
+/*
  * MMS M-Send.Conf PDU 1
  * This PDU shows the decoding of a M-Send.Conf PDU with an accepted "response
  * status" and a below content:
@@ -606,6 +615,10 @@ static const struct mms_test mms_m_retrieve_conf_test_8 = {
 
 static const struct mms_test mms_m_retrieve_conf_test_9 = {
 	.pathname = mms_m_retrieve_conf_9,
+};
+
+static const struct mms_test mms_m_retrieve_conf_test_10 = {
+	.pathname = mms_m_retrieve_conf_10,
 };
 
 static const struct mms_test mms_m_send_conf_test_1 = {
@@ -782,6 +795,8 @@ int main(int argc, char **argv)
 				&mms_m_retrieve_conf_test_8, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 9",
 				&mms_m_retrieve_conf_test_9, test_decode_mms);
+	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 10",
+				&mms_m_retrieve_conf_test_10, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 1",
 				&mms_m_send_conf_test_1, test_decode_mms);
