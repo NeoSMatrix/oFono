@@ -65,7 +65,8 @@ unit_test_data_files = unit/ni-mms-1-3-con-271.mms \
 				unit/rc-mms-1-3-con-216.mms \
 				unit/rc-mms-1-3-con-220.mms \
 				unit/rc-mms-1-3-con-224.mms \
-				unit/rc-mms-1-3-con-228.mms
+				unit/rc-mms-1-3-con-228.mms \
+				unit/rc-mms-1-3-con-211.mms
 
 EXTRA_DIST = src/genbuiltin $(test_scripts) $(doc_files) \
 					$(unit_test_data_files)
