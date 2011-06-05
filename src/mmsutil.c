@@ -817,11 +817,13 @@ static gboolean mms_parse_attachments(struct wsp_header_iter *iter,
 					wsp_multipart_iter_get_body(&mi) -
 					wsp_header_iter_get_pdu(iter);
 
-		out->attachments = g_slist_append(out->attachments, part);
+		out->attachments = g_slist_prepend(out->attachments, part);
 	}
 
 	if (wsp_multipart_iter_close(&mi, iter) == FALSE)
 		return FALSE;
+
+	out->attachments = g_slist_reverse(out->attachments);
 
 	return TRUE;
 }
