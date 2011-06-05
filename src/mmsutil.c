@@ -811,10 +811,6 @@ static gboolean mms_parse_attachments(struct wsp_header_iter *iter,
 		else
 			part->content_type = g_strconcat(mimetype, ";charset=",
 								charset, NULL);
-		if (part->content_type == NULL) {
-			free_attachment(part, NULL);
-			return FALSE;
-		}
 
 		part->length = wsp_multipart_iter_get_body_len(&mi);
 		part->offset = (const unsigned char *)
