@@ -304,6 +304,24 @@ static gboolean extract_absolute_relative_date(struct wsp_header_iter *iter,
 	return TRUE;
 }
 
+static gboolean extract_boolean(struct wsp_header_iter *iter, void *user)
+{
+	gboolean *out = user;
+	const unsigned char *p;
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
+		return FALSE;
+
+	p = wsp_header_iter_get_val(iter);
+
+	if (p[0] != 128 && p[0] != 129)
+		return FALSE;
+
+	*out = p[0] == 128;
+
+	return TRUE;
+}
+
 static gboolean extract_from(struct wsp_header_iter *iter, void *user)
 {
 	char **out = user;
@@ -486,7 +504,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_DATE:
 		return extract_date;
 	case MMS_HEADER_DELIVERY_REPORT:
-		return NULL;
+		return extract_boolean;
 	case MMS_HEADER_DELIVERY_TIME:
 		return extract_absolute_relative_date;
 	case MMS_HEADER_EXPIRY:
@@ -506,9 +524,9 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_PRIORITY:
 		return extract_priority;
 	case MMS_HEADER_READ_REPLY:
-		return NULL;
+		return extract_boolean;
 	case MMS_HEADER_REPORT_ALLOWED:
-		return NULL;
+		return extract_boolean;
 	case MMS_HEADER_RESPONSE_STATUS:
 		return extract_rsp_status;
 	case MMS_HEADER_RESPONSE_TEXT:
