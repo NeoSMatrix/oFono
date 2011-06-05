@@ -56,6 +56,11 @@ enum mms_message_notify_status {
 	MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED =	132,
 };
 
+enum mms_message_sender_visibility {
+	MMS_MESSAGE_SENDER_VISIBILITY_HIDE =		128,
+	MMS_MESSAGE_SENDER_VISIBILITY_SHOW =		129,
+};
+
 enum mms_message_version {
 	MMS_MESSAGE_VERSION_1_0 =	0x90,
 	MMS_MESSAGE_VERSION_1_1 =	0x91,

@@ -376,6 +376,25 @@ static gboolean extract_message_class(struct wsp_header_iter *iter, void *user)
 	return TRUE;
 }
 
+static gboolean extract_sender_visibility(struct wsp_header_iter *iter,
+						void *user)
+{
+	enum mms_message_sender_visibility *out = user;
+	const unsigned char *p;
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
+		return FALSE;
+
+	p = wsp_header_iter_get_val(iter);
+
+	if (p[0] != 128 && p[0] != 129)
+		return FALSE;
+
+	*out = p[0];
+
+	return TRUE;
+}
+
 static gboolean extract_priority(struct wsp_header_iter *iter, void *user)
 {
 	char **out = user;
@@ -495,7 +514,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_RESPONSE_TEXT:
 		return extract_encoded_text;
 	case MMS_HEADER_SENDER_VISIBILITY:
-		return NULL;
+		return extract_sender_visibility;
 	case MMS_HEADER_STATUS:
 		return NULL;
 	case MMS_HEADER_SUBJECT:
