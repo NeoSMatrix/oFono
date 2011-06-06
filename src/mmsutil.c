@@ -74,6 +74,11 @@ enum mms_header {
 	MMS_HEADER_INVALID =			0x80,
 };
 
+enum mms_part_header {
+	MMS_PART_HEADER_CONTENT_LOCATION =	0x0e,
+	MMS_PART_HEADER_CONTENT_ID =		0x40,
+};
+
 /*
  * IANA Character Set Assignments (examples) used by WAPWSP
  *
@@ -676,10 +681,159 @@ static gboolean decode_notification_ind(struct wsp_header_iter *iter,
 				MMS_HEADER_INVALID);
 }
 
+static const char *decode_attachment_charset(const unsigned char *pdu,
+							unsigned int len)
+{
+	struct wsp_parameter_iter iter;
+	struct wsp_parameter param;
+
+	wsp_parameter_iter_init(&iter, pdu, len);
+
+	while (wsp_parameter_iter_next(&iter, &param)) {
+		if (param.type == WSP_PARAMETER_TYPE_CHARSET)
+			return param.text;
+	}
+
+	return NULL;
+}
+
+static gboolean extract_content_id(struct wsp_header_iter *iter, void *user)
+{
+	char **out = user;
+	const unsigned char *p;
+	unsigned int l;
+	const char *text;
+
+	p = wsp_header_iter_get_val(iter);
+	l = wsp_header_iter_get_val_len(iter);
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_TEXT)
+		return FALSE;
+
+	text = wsp_decode_quoted_string(p, l, NULL);
+
+	if (text == NULL)
+		return FALSE;
+
+	*out = g_strdup(text);
+
+	return TRUE;
+}
+
+static gboolean attachment_parse_headers(struct wsp_header_iter *iter,
+						struct mms_attachment *part)
+{
+	while (wsp_header_iter_next(iter)) {
+		const unsigned char *hdr = wsp_header_iter_get_hdr(iter);
+		unsigned char h;
+		unsigned int len;
+
+		/* Skip application headers */
+		if (wsp_header_iter_get_hdr_type(iter) !=
+				WSP_HEADER_TYPE_WELL_KNOWN)
+			continue;
+
+		h = hdr[0] & 0x7f;
+		len = wsp_header_iter_get_val_len(iter);
+
+		switch (h) {
+		case MMS_PART_HEADER_CONTENT_ID:
+			if (extract_content_id(iter, &part->content_id)
+								== FALSE)
+				return FALSE;
+			break;
+		case MMS_PART_HEADER_CONTENT_LOCATION:
+			break;
+		}
+	}
+
+	return TRUE;
+}
+
+static void free_attachment(gpointer data, gpointer user_data)
+{
+	struct mms_attachment *attach = data;
+
+	g_free(attach->file);
+	g_free(attach->content_type);
+	g_free(attach->content_id);
+
+	g_free(attach);
+}
+
+static gboolean mms_parse_attachments(struct wsp_header_iter *iter,
+						struct mms_message *out)
+{
+	struct wsp_multipart_iter mi;
+	const void *ct;
+	unsigned int ct_len;
+	unsigned int consumed;
+
+	if (wsp_multipart_iter_init(&mi, iter, &ct, &ct_len) == FALSE)
+		return FALSE;
+
+	while (wsp_multipart_iter_next(&mi) == TRUE) {
+		struct mms_attachment *part;
+		struct wsp_header_iter hi;
+		const void *mimetype;
+		const char *charset;
+
+		ct = wsp_multipart_iter_get_content_type(&mi);
+		ct_len = wsp_multipart_iter_get_content_type_len(&mi);
+
+		if (wsp_decode_content_type(ct, ct_len, &mimetype,
+						&consumed) == FALSE)
+			return FALSE;
+
+		charset = decode_attachment_charset(ct + consumed,
+							ct_len - consumed);
+
+		wsp_header_iter_init(&hi, wsp_multipart_iter_get_hdr(&mi),
+					wsp_multipart_iter_get_hdr_len(&mi),
+					0);
+
+		part = g_try_new0(struct mms_attachment, 1);
+		if (part == NULL)
+			return FALSE;
+
+		if (attachment_parse_headers(&hi, part) == FALSE) {
+			free_attachment(part, NULL);
+			return FALSE;
+		}
+
+		if (wsp_header_iter_at_end(&hi) == FALSE) {
+			free_attachment(part, NULL);
+			return FALSE;
+		}
+
+		if (charset == NULL)
+			part->content_type = g_strdup(mimetype);
+		else
+			part->content_type = g_strconcat(mimetype, ";charset=",
+								charset, NULL);
+		if (part->content_type == NULL) {
+			free_attachment(part, NULL);
+			return FALSE;
+		}
+
+		part->length = wsp_multipart_iter_get_body_len(&mi);
+		part->offset = (const unsigned char *)
+					wsp_multipart_iter_get_body(&mi) -
+					wsp_header_iter_get_pdu(iter);
+
+		out->attachments = g_slist_append(out->attachments, part);
+	}
+
+	if (wsp_multipart_iter_close(&mi, iter) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
 static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 						struct mms_message *out)
 {
-	return mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
+	if (mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
 				HEADER_FLAG_PRESET_POS, &out->transaction_id,
 				MMS_HEADER_MMS_VERSION,
 				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
@@ -698,7 +852,22 @@ static gboolean decode_retrieve_conf(struct wsp_header_iter *iter,
 				0, &out->rc.msgid,
 				MMS_HEADER_DATE,
 				HEADER_FLAG_MANDATORY, &out->rc.date,
-				MMS_HEADER_INVALID);
+				MMS_HEADER_INVALID) == FALSE)
+		return FALSE;
+
+	if (wsp_header_iter_at_end(iter) == TRUE)
+		return TRUE;
+
+	if (wsp_header_iter_is_multipart(iter) == FALSE)
+		return FALSE;
+
+	if (mms_parse_attachments(iter, out) == FALSE)
+		return FALSE;
+
+	if (wsp_header_iter_at_end(iter) == FALSE)
+		return FALSE;
+
+	return TRUE;
 }
 
 static gboolean decode_send_conf(struct wsp_header_iter *iter,
@@ -773,17 +942,6 @@ gboolean mms_message_decode(const unsigned char *pdu,
 	}
 
 	return FALSE;
-}
-
-static void free_attachment(gpointer data, gpointer user_data)
-{
-	struct mms_attachment *attach = data;
-
-	g_free(attach->file);
-	g_free(attach->content_type);
-	g_free(attach->content_id);
-
-	g_free(attach);
 }
 
 void mms_message_free(struct mms_message *msg)
