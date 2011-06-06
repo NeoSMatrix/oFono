@@ -537,6 +537,8 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 	if (count > dest_size)
 		return FALSE;
 
+	*written = count;
+
 	/*
 	 * Output to stream, MS first!
 	 * 0x80 flag = "continue". LS byte does not have this flag.
@@ -545,7 +547,6 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 		*dest++ = d[count] | 0x80;
 
 	*dest = d[count];
-	*written = count;
 
 	return TRUE;
 }
