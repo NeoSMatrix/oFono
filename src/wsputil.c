@@ -498,9 +498,6 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 	unsigned char d[5];
 	unsigned int count = 0;
 
-	if (dest == NULL || written == NULL)
-		return FALSE;
-
 	/* Separate into 7-bit chunks, LS first */
 	while (value || !count) {
 		d[count++] = value & 0x7F;
@@ -510,17 +507,15 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 	if (count > dest_size)
 		return FALSE;
 
-	*written = count;
-
 	/*
 	 * Output to stream, MS first!
 	 * 0x80 flag = "continue". LS byte does not have this flag.
 	 */
-
 	while (--count)
 		*dest++ = d[count] | 0x80;
 
 	*dest = d[count];
+	*written = count;
 
 	return TRUE;
 }
@@ -528,27 +523,24 @@ gboolean wsp_encode_uintvar(unsigned int value, unsigned char *dest,
 gboolean wsp_encode_value_length(unsigned int len, unsigned char *dest,
 				unsigned int dest_size, unsigned int *written)
 {
-	if (dest == NULL || written == NULL)
-		return FALSE;
-
 	if (dest_size < 1)
 		return FALSE;
 
-	if (len < 0x1f) {
+	if (len <= 30) {
 		*dest = len;
 		*written = 1;
 
 		return TRUE;
 	}
 
-	/* 0x1f is escape for variable length int */
-	*dest++ = 0x1f;
+	/* 31 is escape for variable length int */
+	*dest++ = 31;
 	dest_size--;
 
 	if (wsp_encode_uintvar(len, dest, dest_size, written) == FALSE)
 		return FALSE;
 
-	(*written)++;
+	*written += 1;
 
 	return TRUE;
 }
@@ -559,15 +551,11 @@ gboolean wsp_encode_integer(unsigned int value, unsigned char *dest,
 	unsigned char moi[sizeof(unsigned int)];
 	unsigned int count;
 
-	if (dest == NULL || written == NULL)
-		return FALSE;
-
 	if (dest_size < 1)
 		return FALSE;
 
 	if (value < 0x80) {
 		*dest = value | 0x80;
-
 		*written = 1;
 
 		return TRUE;
@@ -582,7 +570,6 @@ gboolean wsp_encode_integer(unsigned int value, unsigned char *dest,
 		return FALSE;
 
 	*written = count + 1;
-
 	*dest++ = count;
 
 	for (; count > 0; count--)
