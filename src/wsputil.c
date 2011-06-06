@@ -235,6 +235,24 @@ const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
 	return r;
 }
 
+const char *wsp_decode_quoted_string(const unsigned char *pdu, unsigned int len,
+					unsigned int *consumed)
+{
+	const char *text;
+
+	text = wsp_decode_text(pdu, len, consumed);
+	if (text == NULL)
+		return NULL;
+
+	if (*text != '"')
+		return NULL;
+
+	/* Skip initial quote */
+	text++;
+
+	return text;
+}
+
 gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 				unsigned int *out_len, unsigned int *consumed)
 {

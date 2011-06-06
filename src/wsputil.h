@@ -140,6 +140,8 @@ const char *wsp_decode_token_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
 const char *wsp_decode_text(const unsigned char *pdu, unsigned int len,
 					unsigned int *consumed);
+const char *wsp_decode_quoted_string(const unsigned char *pdu, unsigned int len,
+					unsigned int *consumed);
 
 gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 					const void **out_value,
