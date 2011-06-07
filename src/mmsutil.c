@@ -726,7 +726,6 @@ static gboolean attachment_parse_headers(struct wsp_header_iter *iter,
 	while (wsp_header_iter_next(iter)) {
 		const unsigned char *hdr = wsp_header_iter_get_hdr(iter);
 		unsigned char h;
-		unsigned int len;
 
 		/* Skip application headers */
 		if (wsp_header_iter_get_hdr_type(iter) !=
@@ -734,7 +733,6 @@ static gboolean attachment_parse_headers(struct wsp_header_iter *iter,
 			continue;
 
 		h = hdr[0] & 0x7f;
-		len = wsp_header_iter_get_val_len(iter);
 
 		switch (h) {
 		case MMS_PART_HEADER_CONTENT_ID:
