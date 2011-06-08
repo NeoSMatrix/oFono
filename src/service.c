@@ -667,8 +667,9 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 					DBUS_TYPE_STRING,  &date);
 
 	/* Smil available from message struct */
-	mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING,
-							&msg->sr.smil);
+	if (msg->sr.smil != NULL)
+		mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING,
+					   &msg->sr.smil);
 
 	if (msg->sr.to != NULL)
 		append_msg_recipients(dict, msg);
