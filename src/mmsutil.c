@@ -473,6 +473,32 @@ static gboolean extract_rsp_status(struct wsp_header_iter *iter, void *user)
 	return FALSE;
 }
 
+static gboolean extract_status(struct wsp_header_iter *iter, void *user)
+{
+	enum mms_message_delivery_status *out = user;
+	const unsigned char *p;
+
+	if (wsp_header_iter_get_val_type(iter) != WSP_VALUE_TYPE_SHORT)
+		return FALSE;
+
+	p = wsp_header_iter_get_val(iter);
+
+	switch (p[0]) {
+	case MMS_MESSAGE_DELIVERY_STATUS_EXPIRED:
+	case MMS_MESSAGE_DELIVERY_STATUS_RETRIEVED:
+	case MMS_MESSAGE_DELIVERY_STATUS_REJECTED:
+	case MMS_MESSAGE_DELIVERY_STATUS_DEFERRED:
+	case MMS_MESSAGE_DELIVERY_STATUS_UNRECOGNISED:
+	case MMS_MESSAGE_DELIVERY_STATUS_INDETERMINATE:
+	case MMS_MESSAGE_DELIVERY_STATUS_FORWARDED:
+	case MMS_MESSAGE_DELIVERY_STATUS_UNREACHABLE:
+		*out = p[0];
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static gboolean extract_unsigned(struct wsp_header_iter *iter, void *user)
 {
 	unsigned long *out = user;
@@ -539,7 +565,7 @@ static header_handler handler_for_type(enum mms_header header)
 	case MMS_HEADER_SENDER_VISIBILITY:
 		return extract_sender_visibility;
 	case MMS_HEADER_STATUS:
-		return NULL;
+		return extract_status;
 	case MMS_HEADER_SUBJECT:
 		return extract_encoded_text;
 	case MMS_HEADER_TO:
