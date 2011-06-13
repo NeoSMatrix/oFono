@@ -116,9 +116,11 @@ char *mms_content_type_get_param_value(const char *content_type,
 		const char *name;
 
 		tmp++;
+
 		/* Skip spaces */
 		for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
 			;
+
 		if (*tmp == 0)
 			break;
 
@@ -127,6 +129,7 @@ char *mms_content_type_get_param_value(const char *content_type,
 		/* Go to end of name */
 		for (; *tmp != 0 && *tmp != '=' && isspace(*tmp) == 0; tmp++)
 			;
+
 		if (*tmp == 0)
 			break;
 
@@ -139,9 +142,11 @@ char *mms_content_type_get_param_value(const char *content_type,
 				break;
 
 			tmp++;
+
 			/* Skip spaces */
 			for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
 				;
+
 			if (*tmp == 0)
 				break;
 
@@ -151,6 +156,7 @@ char *mms_content_type_get_param_value(const char *content_type,
 			for (; *tmp != 0 && *tmp != ';' && isspace(*tmp) == 0;
 									tmp++)
 				;
+
 			ret = g_strndup(value, tmp - value);
 			break;
 		}
