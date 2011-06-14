@@ -437,65 +437,6 @@ static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
 	return FALSE;
 }
 
-static char *content_type_get_param_value(const char *content_type,
-						const char *param_name)
-{
-	char *ret = NULL;
-	const char *tmp;
-
-	/* Skip content-type */
-	tmp = strchr(content_type, ';');
-
-	while (tmp != NULL) {
-		const char *name;
-
-		tmp++;
-		/* Skip spaces */
-		for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
-			;
-		if (*tmp == 0)
-			break;
-
-		name = tmp;
-
-		/* Go to end of name */
-		for (; *tmp != 0 && *tmp != '=' && isspace(*tmp) == 0; tmp++)
-			;
-		if (*tmp == 0)
-			break;
-
-		if (strncmp(param_name, name, tmp - name) == 0) {
-			const char *value;
-
-			/* Go to '=' */
-			tmp = strchr(tmp, '=');
-			if (tmp == NULL)
-				break;
-
-			tmp++;
-			/* Skip spaces */
-			for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
-				;
-			if (*tmp == 0)
-				break;
-
-			value = tmp;
-
-			/* Go to end of value */
-			for (; *tmp != 0 && *tmp != ';' && isspace(*tmp) == 0;
-									tmp++)
-				;
-			ret = g_strndup(value, tmp - value);
-			break;
-		}
-
-		/* Go to next parameter */
-		tmp = strchr(tmp, ';');
-	}
-
-	return ret;
-}
-
 static const char *time_to_str(const time_t *t)
 {
 	static char buf[128];
@@ -553,7 +494,7 @@ static void append_smil(DBusMessageIter *dict,
 	if (data == NULL || data == MAP_FAILED)
 		goto out;
 
-	from_codeset = content_type_get_param_value(part->content_type,
+	from_codeset = mms_content_type_get_param_value(part->content_type,
 								"charset");
 	if (from_codeset != NULL) {
 		smil = g_convert((const char *) data + part->offset,

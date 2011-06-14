@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <ctype.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -101,6 +102,65 @@ struct file_buffer {
 	unsigned int size;
 	int fd;
 };
+
+char *mms_content_type_get_param_value(const char *content_type,
+						const char *param_name)
+{
+	char *ret = NULL;
+	const char *tmp;
+
+	/* Skip content-type */
+	tmp = strchr(content_type, ';');
+
+	while (tmp != NULL) {
+		const char *name;
+
+		tmp++;
+		/* Skip spaces */
+		for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
+			;
+		if (*tmp == 0)
+			break;
+
+		name = tmp;
+
+		/* Go to end of name */
+		for (; *tmp != 0 && *tmp != '=' && isspace(*tmp) == 0; tmp++)
+			;
+		if (*tmp == 0)
+			break;
+
+		if (strncmp(param_name, name, tmp - name) == 0) {
+			const char *value;
+
+			/* Go to '=' */
+			tmp = strchr(tmp, '=');
+			if (tmp == NULL)
+				break;
+
+			tmp++;
+			/* Skip spaces */
+			for (; *tmp != 0 && isspace(*tmp) != 0; tmp++)
+				;
+			if (*tmp == 0)
+				break;
+
+			value = tmp;
+
+			/* Go to end of value */
+			for (; *tmp != 0 && *tmp != ';' && isspace(*tmp) == 0;
+									tmp++)
+				;
+			ret = g_strndup(value, tmp - value);
+			break;
+		}
+
+		/* Go to next parameter */
+		tmp = strchr(tmp, ';');
+	}
+
+	return ret;
+}
 
 static const char *charset_index2string(unsigned int index)
 {
