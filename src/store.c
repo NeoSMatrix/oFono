@@ -25,12 +25,14 @@
 
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include "mms.h"
 
@@ -167,6 +169,57 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 	close(fd);
 
 done:
+	g_string_free(pathname, TRUE);
+
+	return uuid;
+}
+
+const char *mms_store_file(const char *service_id, const char *path)
+{
+	GString *pathname;
+	const char *uuid;
+	int fd;
+	struct stat st;
+	unsigned char *pdu;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s\n", path);
+		return NULL;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		mms_error("Failed to fstat %s\n", path);
+		close(fd);
+		return NULL;
+	}
+
+	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (pdu == NULL || pdu == MAP_FAILED) {
+		mms_error("Failed to mmap %s\n", path);
+		close(fd);
+		return NULL;
+	}
+
+	uuid = generate_uuid_from_pdu(pdu, st.st_size);
+
+	munmap(pdu, st.st_size);
+
+	close(fd);
+
+	if (uuid == NULL)
+		return NULL;
+
+	pathname = generate_pdu_pathname(service_id, uuid);
+	if (pathname == NULL)
+		return NULL;
+
+	if (g_rename(path, pathname->str) < 0) {
+		mms_error("Failed to rename %s to %s\n", path, pathname->str);
+
+		uuid = NULL;
+	}
+
 	g_string_free(pathname, TRUE);
 
 	return uuid;
