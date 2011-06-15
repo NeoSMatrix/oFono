@@ -1148,6 +1148,8 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 
 	process_request_queue(service);
 
+	return;
+
 interface_down:
 	if (service->current_request_id > 0)
 		g_web_cancel_request(service->web, service->current_request_id);
