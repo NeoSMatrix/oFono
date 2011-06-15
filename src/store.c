@@ -86,17 +86,12 @@ static int create_dirs(const char *filename, const mode_t mode)
 	return 0;
 }
 
-const char *mms_store(const char *service_id, unsigned char *pdu,
-							unsigned int len)
+
+static const char *generate_uuid_from_pdu(unsigned char *pdu, unsigned int len)
 {
 	GChecksum *checksum;
 	guint8 digest[MMS_SHA1_UUID_LEN];
 	gsize digest_size = MMS_SHA1_UUID_LEN;
-	GString *pathname;
-	const char *homedir;
-	const char *uuid;
-	ssize_t size;
-	int fd;
 
 	DBG("pdu %p len %d", pdu, len);
 
@@ -110,6 +105,14 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 
 	g_checksum_free(checksum);
 
+	return digest_to_str(digest);
+}
+
+static GString *generate_pdu_pathname(const char *service_id, const char *uuid)
+{
+	GString *pathname;
+	const char *homedir;
+
 	homedir = g_get_home_dir();
 	if (homedir == NULL)
 		return NULL;
@@ -118,16 +121,35 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 
 	g_string_append_printf(pathname, "/.mms/%s/", service_id);
 
-	uuid = digest_to_str(digest);
 	g_string_append(pathname, uuid);
 
 	DBG("pathname %s", pathname->str);
 
 	if (create_dirs(pathname->str, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
 		mms_error("Failed to create path %s", pathname->str);
-		uuid = NULL;
-		goto done;
+
+		g_string_free(pathname, TRUE);
+		return NULL;
 	}
+
+	return pathname;
+}
+
+const char *mms_store(const char *service_id, unsigned char *pdu,
+							unsigned int len)
+{
+	GString *pathname;
+	const char *uuid;
+	ssize_t size;
+	int fd;
+
+	uuid = generate_uuid_from_pdu(pdu, len);
+	if (uuid == NULL)
+		return NULL;
+
+	pathname = generate_pdu_pathname(service_id, uuid);
+	if (pathname == NULL)
+		return NULL;
 
 	fd = open(pathname->str, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
 	if (fd < 0) {
