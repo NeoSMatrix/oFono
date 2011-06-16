@@ -33,8 +33,6 @@
 #include "wsputil.h"
 #include "mmsutil.h"
 
-#define MAX_TRANSACTION_ID_SIZE 40
-
 #define uninitialized_var(x) x = x
 
 typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
@@ -1121,64 +1119,11 @@ static void *fb_request(struct file_buffer *fb, unsigned int count)
 	return fb->buf;
 }
 
-static gboolean mms_encode_header(struct mms_message *msg,
-						struct file_buffer *fb)
-{
-	char *ptr;
-	unsigned int len;
-
-	len = strlen(msg->transaction_id) + 1;
-
-	if (len > MAX_TRANSACTION_ID_SIZE)
-		return FALSE;
-
-	ptr = fb_request(fb, 2);
-	if (ptr == NULL)
-		return FALSE;
-
-	ptr[0] = MMS_HEADER_MESSAGE_TYPE | 0x80;
-	ptr[1] = msg->type | 0x80;
-
-	ptr = fb_request(fb, len + 1);
-	if (ptr == NULL)
-		return FALSE;
-
-	ptr[0] = MMS_HEADER_TRANSACTION_ID | 0x80;
-	strcpy(ptr + 1, msg->transaction_id);
-
-	ptr = fb_request(fb, 2);
-	if (ptr == NULL)
-		return FALSE;
-
-	ptr[0] = MMS_HEADER_MMS_VERSION | 0x80;
-	ptr[1] = msg->version | 0x80;
-
-	return TRUE;
-}
-
-static gboolean mms_encode_notify_resp_ind(struct mms_message *msg,
-							struct file_buffer *fb)
-{
-	char *ptr;
-
-	ptr = fb_request(fb, 2);
-	if (ptr == NULL)
-		return FALSE;
-
-	ptr[0] = MMS_HEADER_STATUS | 0x80;
-	ptr[1] = msg->nri.notify_status | 0x80;
-
-	return fb_flush(fb);
-}
-
 gboolean mms_message_encode(struct mms_message *msg, int fd)
 {
 	struct file_buffer fb;
 
 	fb_init(&fb, fd);
-
-	if (mms_encode_header(msg, &fb) == FALSE)
-		return FALSE;
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
@@ -1186,7 +1131,7 @@ gboolean mms_message_encode(struct mms_message *msg, int fd)
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 		return FALSE;
 	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
-		return mms_encode_notify_resp_ind(msg, &fb);
+		return FALSE;
 	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
 	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
