@@ -35,8 +35,6 @@
 
 #define uninitialized_var(x) x = x
 
-typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
-
 enum header_flag {
 	HEADER_FLAG_MANDATORY =			1,
 	HEADER_FLAG_ALLOW_MULTI =		2,
@@ -100,6 +98,10 @@ struct file_buffer {
 	unsigned int size;
 	int fd;
 };
+
+typedef gboolean (*header_handler)(struct wsp_header_iter *, void *);
+typedef gboolean (*header_encoder)(struct file_buffer *, enum mms_header,
+									void *);
 
 char *mms_content_type_get_param_value(const char *content_type,
 						const char *param_name)
@@ -1117,6 +1119,94 @@ static void *fb_request(struct file_buffer *fb, unsigned int count)
 	fb->size = count;
 
 	return fb->buf;
+}
+
+static header_encoder encoder_for_type(enum mms_header header)
+{
+	switch (header) {
+	case MMS_HEADER_BCC:
+		return NULL;
+	case MMS_HEADER_CC:
+		return NULL;
+	case MMS_HEADER_CONTENT_LOCATION:
+		return NULL;
+	case MMS_HEADER_CONTENT_TYPE:
+		return NULL;
+	case MMS_HEADER_DATE:
+		return NULL;
+	case MMS_HEADER_DELIVERY_REPORT:
+		return NULL;
+	case MMS_HEADER_DELIVERY_TIME:
+		return NULL;
+	case MMS_HEADER_EXPIRY:
+		return NULL;
+	case MMS_HEADER_FROM:
+		return NULL;
+	case MMS_HEADER_MESSAGE_CLASS:
+		return NULL;
+	case MMS_HEADER_MESSAGE_ID:
+		return NULL;
+	case MMS_HEADER_MESSAGE_TYPE:
+		return NULL;
+	case MMS_HEADER_MMS_VERSION:
+		return NULL;
+	case MMS_HEADER_MESSAGE_SIZE:
+		return NULL;
+	case MMS_HEADER_PRIORITY:
+		return NULL;
+	case MMS_HEADER_READ_REPLY:
+		return NULL;
+	case MMS_HEADER_REPORT_ALLOWED:
+		return NULL;
+	case MMS_HEADER_RESPONSE_STATUS:
+		return NULL;
+	case MMS_HEADER_RESPONSE_TEXT:
+		return NULL;
+	case MMS_HEADER_SENDER_VISIBILITY:
+		return NULL;
+	case MMS_HEADER_STATUS:
+		return NULL;
+	case MMS_HEADER_SUBJECT:
+		return NULL;
+	case MMS_HEADER_TO:
+		return NULL;
+	case MMS_HEADER_TRANSACTION_ID:
+		return NULL;
+	case MMS_HEADER_INVALID:
+	case __MMS_HEADER_MAX:
+		return NULL;
+	}
+
+	return NULL;
+}
+
+static gboolean mms_encode_headers(struct file_buffer *fb,
+					enum mms_header orig_header, ...)
+{
+	va_list args;
+	void *data;
+	enum mms_header header;
+	header_encoder encoder;
+
+	va_start(args, orig_header);
+	header = orig_header;
+
+	while (header != MMS_HEADER_INVALID) {
+		data = va_arg(args, void *);
+
+		encoder = encoder_for_type(header);
+		if (encoder == NULL)
+			return FALSE;
+
+		if (data && encoder(fb, header, data) == FALSE)
+			return FALSE;
+
+		header = va_arg(args, enum mms_header);
+	}
+
+	va_end(args);
+
+	return TRUE;
 }
 
 gboolean mms_message_encode(struct mms_message *msg, int fd)
