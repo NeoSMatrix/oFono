@@ -1137,6 +1137,25 @@ static gboolean encode_short(struct file_buffer *fb,
 	return TRUE;
 }
 
+static gboolean encode_text(struct file_buffer *fb,
+				enum mms_header header, void *user)
+{
+	char *ptr;
+	char **text = user;
+	unsigned int len;
+
+	len = strlen(*text) + 1;
+
+	ptr = fb_request(fb, len + 1);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = header | 0x80;
+	strcpy(ptr + 1, *text);
+
+	return TRUE;
+}
+
 static header_encoder encoder_for_type(enum mms_header header)
 {
 	switch (header) {
@@ -1187,7 +1206,7 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_TO:
 		return NULL;
 	case MMS_HEADER_TRANSACTION_ID:
-		return NULL;
+		return encode_text;
 	case MMS_HEADER_INVALID:
 	case __MMS_HEADER_MAX:
 		return NULL;
