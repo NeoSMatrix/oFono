@@ -1244,6 +1244,19 @@ static gboolean mms_encode_headers(struct file_buffer *fb,
 	return TRUE;
 }
 
+static gboolean mms_encode_notify_resp_ind(struct mms_message *msg,
+							struct file_buffer *fb)
+{
+	if (mms_encode_headers(fb, MMS_HEADER_MESSAGE_TYPE, &msg->type,
+				MMS_HEADER_TRANSACTION_ID, &msg->transaction_id,
+				MMS_HEADER_MMS_VERSION, &msg->version,
+				MMS_HEADER_STATUS, &msg->nri.notify_status,
+				MMS_HEADER_INVALID) == FALSE)
+		return FALSE;
+
+	return fb_flush(fb);
+}
+
 gboolean mms_message_encode(struct mms_message *msg, int fd)
 {
 	struct file_buffer fb;
@@ -1256,7 +1269,7 @@ gboolean mms_message_encode(struct mms_message *msg, int fd)
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 		return FALSE;
 	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
-		return FALSE;
+		return mms_encode_notify_resp_ind(msg, &fb);
 	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
 	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
