@@ -1121,6 +1121,22 @@ static void *fb_request(struct file_buffer *fb, unsigned int count)
 	return fb->buf;
 }
 
+static gboolean encode_short(struct file_buffer *fb,
+				enum mms_header header, void *user)
+{
+	char *ptr;
+	unsigned int *wk = user;
+
+	ptr = fb_request(fb, 2);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = header | 0x80;
+	ptr[1] = *wk | 0x80;
+
+	return TRUE;
+}
+
 static header_encoder encoder_for_type(enum mms_header header)
 {
 	switch (header) {
@@ -1147,9 +1163,9 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_MESSAGE_ID:
 		return NULL;
 	case MMS_HEADER_MESSAGE_TYPE:
-		return NULL;
+		return encode_short;
 	case MMS_HEADER_MMS_VERSION:
-		return NULL;
+		return encode_short;
 	case MMS_HEADER_MESSAGE_SIZE:
 		return NULL;
 	case MMS_HEADER_PRIORITY:
@@ -1165,7 +1181,7 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_SENDER_VISIBILITY:
 		return NULL;
 	case MMS_HEADER_STATUS:
-		return NULL;
+		return encode_short;
 	case MMS_HEADER_SUBJECT:
 		return NULL;
 	case MMS_HEADER_TO:
