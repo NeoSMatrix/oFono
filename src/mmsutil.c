@@ -1137,6 +1137,27 @@ static gboolean encode_short(struct file_buffer *fb,
 	return TRUE;
 }
 
+static gboolean encode_from(struct file_buffer *fb,
+				enum mms_header header, void *user)
+{
+	char *ptr;
+	char **text = user;
+
+	if (strlen(*text) > 0)
+		return FALSE;
+
+	/* From: header token + value length + Insert-address-token */
+	ptr = fb_request(fb, 3);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = header | 0x80;
+	ptr[1] = 1;
+	ptr[2] = 129;
+
+	return TRUE;
+}
+
 static gboolean encode_text(struct file_buffer *fb,
 				enum mms_header header, void *user)
 {
@@ -1176,7 +1197,7 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_EXPIRY:
 		return NULL;
 	case MMS_HEADER_FROM:
-		return NULL;
+		return encode_from;
 	case MMS_HEADER_MESSAGE_CLASS:
 		return NULL;
 	case MMS_HEADER_MESSAGE_ID:
