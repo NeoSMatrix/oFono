@@ -1121,18 +1121,31 @@ static void *fb_request(struct file_buffer *fb, unsigned int count)
 	return fb->buf;
 }
 
+static void *fb_request_field(struct file_buffer *fb, unsigned int token,
+					unsigned int len)
+{
+	unsigned char *ptr;
+
+	ptr = fb_request(fb, len + 1);
+	if (ptr == NULL)
+		return NULL;
+
+	ptr[0] = token | 0x80;
+
+	return ptr + 1;
+}
+
 static gboolean encode_short(struct file_buffer *fb,
 				enum mms_header header, void *user)
 {
 	char *ptr;
 	unsigned int *wk = user;
 
-	ptr = fb_request(fb, 2);
+	ptr = fb_request_field(fb, header, 1);
 	if (ptr == NULL)
 		return FALSE;
 
-	ptr[0] = header | 0x80;
-	ptr[1] = *wk | 0x80;
+	*ptr = *wk | 0x80;
 
 	return TRUE;
 }
@@ -1147,13 +1160,12 @@ static gboolean encode_from(struct file_buffer *fb,
 		return FALSE;
 
 	/* From: header token + value length + Insert-address-token */
-	ptr = fb_request(fb, 3);
+	ptr = fb_request_field(fb, header, 2);
 	if (ptr == NULL)
 		return FALSE;
 
-	ptr[0] = header | 0x80;
-	ptr[1] = 1;
-	ptr[2] = 129;
+	ptr[0] = 1;
+	ptr[1] = 129;
 
 	return TRUE;
 }
@@ -1167,12 +1179,11 @@ static gboolean encode_text(struct file_buffer *fb,
 
 	len = strlen(*text) + 1;
 
-	ptr = fb_request(fb, len + 1);
+	ptr = fb_request_field(fb, header, len);
 	if (ptr == NULL)
 		return FALSE;
 
-	ptr[0] = header | 0x80;
-	strcpy(ptr + 1, *text);
+	strcpy(ptr, *text);
 
 	return TRUE;
 }
