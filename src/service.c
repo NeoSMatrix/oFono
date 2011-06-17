@@ -146,7 +146,8 @@ static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 			return FALSE;
 
 		if (msg->sr.to != NULL) {
-			tmp = g_strjoin(",", msg->sr.to, rec, NULL);
+			tmp = g_strconcat(msg->sr.to, ",", rec, "/TYPE=PLMN",
+									NULL);
 			if (tmp == NULL)
 				return FALSE;
 
@@ -154,7 +155,7 @@ static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 
 			msg->sr.to = tmp;
 		} else
-			msg->sr.to = g_strdup(rec);
+			msg->sr.to = g_strdup_printf("%s/TYPE=PLMN", rec);
 
 		dbus_message_iter_next(&recipients);
 	}
