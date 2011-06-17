@@ -1177,6 +1177,27 @@ static gboolean encode_text(struct file_buffer *fb,
 	return TRUE;
 }
 
+static gboolean encode_text_array_element(struct file_buffer *fb,
+				enum mms_header header, void *user)
+{
+	char **text = user;
+	char **tos;
+	int i;
+
+	tos = g_strsplit(*text, ",", 0);
+
+	for (i = 0; tos[i] != NULL; i++) {
+		if (encode_text(fb, header, &tos[i]) == FALSE) {
+			g_strfreev(tos);
+			return FALSE;
+		}
+	}
+
+	g_strfreev(tos);
+
+	return TRUE;
+}
+
 static header_encoder encoder_for_type(enum mms_header header)
 {
 	switch (header) {
@@ -1225,7 +1246,7 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_SUBJECT:
 		return NULL;
 	case MMS_HEADER_TO:
-		return NULL;
+		return encode_text_array_element;
 	case MMS_HEADER_TRANSACTION_ID:
 		return encode_text;
 	case MMS_HEADER_INVALID:
