@@ -93,6 +93,41 @@ static void mms_request_destroy(struct mms_request *request)
 	g_free(request);
 }
 
+static gboolean valid_number_format(const char *number)
+{
+	int len = strlen(number);
+	int begin = 0;
+	unsigned int cpt = 0;
+	int i;
+
+	if (!len)
+		return FALSE;
+
+	if (number[0] == '+')
+		begin = 1;
+
+	if (begin == len)
+		return FALSE;
+
+	for (i = begin; i < len; i++) {
+		if (number[i] >= '0' && number[i] <= '9') {
+			cpt++;
+
+			if (cpt > 20)
+				return FALSE;
+
+			continue;
+		}
+
+		if (number[i] == '-' || number[i] == '.')
+			continue;
+
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 						struct mms_message *msg)
 {
@@ -106,6 +141,9 @@ static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 		char *tmp;
 
 		dbus_message_iter_get_basic(&recipients, &rec);
+
+		if (valid_number_format(rec) == FALSE)
+			return FALSE;
 
 		if (msg->sr.to != NULL) {
 			tmp = g_strjoin(",", msg->sr.to, rec, NULL);
