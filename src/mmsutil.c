@@ -1375,6 +1375,23 @@ static gboolean mms_encode_notify_resp_ind(struct mms_message *msg,
 	return fb_flush(fb);
 }
 
+static gboolean mms_encode_send_req(struct mms_message *msg,
+							struct file_buffer *fb)
+{
+	const char *empty_from = "";
+
+	if (mms_encode_headers(fb, MMS_HEADER_MESSAGE_TYPE, &msg->type,
+				MMS_HEADER_TRANSACTION_ID, &msg->transaction_id,
+				MMS_HEADER_MMS_VERSION, &msg->version,
+				MMS_HEADER_FROM, &empty_from,
+				MMS_HEADER_TO, &msg->sr.to,
+				MMS_HEADER_CONTENT_TYPE, &msg->sr.content_type,
+				MMS_HEADER_INVALID) == FALSE)
+		return FALSE;
+
+	return fb_flush(fb);
+}
+
 gboolean mms_message_encode(struct mms_message *msg, int fd)
 {
 	struct file_buffer fb;
@@ -1383,6 +1400,7 @@ gboolean mms_message_encode(struct mms_message *msg, int fd)
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
+		return mms_encode_send_req(msg, &fb);
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
 		return FALSE;
