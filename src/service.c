@@ -579,6 +579,19 @@ static void append_msg_attachments(DBusMessageIter *dict,
 	}
 }
 
+static const char *mms_address_to_string(char *mms_address)
+{
+	unsigned int prefix_len;
+
+	if (g_str_has_suffix(mms_address, "/TYPE=PLMN") == TRUE) {
+		prefix_len = strlen(mms_address) - 10;
+
+		mms_address[prefix_len] = '\0';
+	}
+
+	return (const char *) mms_address;
+}
+
 static void append_msg_recipients(DBusMessageIter *dict,
 					struct mms_message *msg)
 {
@@ -588,6 +601,7 @@ static void append_msg_recipients(DBusMessageIter *dict,
 	DBusMessageIter variant;
 	gchar **uninitialized_var(tokens);
 	unsigned int i;
+	const char *rcpt;
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
@@ -618,9 +632,12 @@ static void append_msg_recipients(DBusMessageIter *dict,
 	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
 							"s", &array);
 
-	for (i = 0; tokens[i] != NULL; i++)
-		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
-								&tokens[i]);
+	for (i = 0; tokens[i] != NULL; i++) {
+		rcpt = mms_address_to_string(tokens[i]);
+
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &rcpt);
+	}
+
 	g_strfreev(tokens);
 
 	dbus_message_iter_close_container(&variant, &array);
@@ -635,6 +652,8 @@ static void append_rc_msg_properties(DBusMessageIter *dict,
 {
 	const char *date = time_to_str(&msg->rc.date);
 	const char *status = "received";
+	const char *from_prefix;
+	char *from;
 
 	mms_dbus_dict_append_basic(dict, "Status",
 					DBUS_TYPE_STRING, &status);
@@ -646,9 +665,14 @@ static void append_rc_msg_properties(DBusMessageIter *dict,
 		mms_dbus_dict_append_basic(dict, "Subject",
 					DBUS_TYPE_STRING, &msg->rc.subject);
 
-	if (msg->rc.from != NULL)
+	from = g_strdup(msg->rc.from);
+
+	if (from != NULL) {
+		from_prefix = mms_address_to_string(from);
 		mms_dbus_dict_append_basic(dict, "Sender",
-					DBUS_TYPE_STRING, &msg->rc.from);
+					DBUS_TYPE_STRING, &from_prefix);
+		g_free(from);
+	}
 
 	if (msg->rc.to != NULL)
 		append_msg_recipients(dict, msg);
