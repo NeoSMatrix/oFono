@@ -47,7 +47,7 @@
 #define uninitialized_var(x) x = x
 
 typedef void (*mms_request_result_cb_t) (guint status, const char *data_path,
-					 gpointer user_data);
+						gpointer user_data);
 
 struct mms_service {
 	gint refcount;
@@ -100,7 +100,7 @@ static gboolean valid_number_format(const char *number)
 	unsigned int num_digits = 0;
 	int i;
 
-	if (!len)
+	if (len == 0)
 		return FALSE;
 
 	if (number[0] == '+')
@@ -731,7 +731,7 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 	/* Smil available from message struct */
 	if (msg->sr.smil != NULL)
 		mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING,
-					   &msg->sr.smil);
+						&msg->sr.smil);
 
 	if (msg->sr.to != NULL)
 		append_msg_recipients(dict, msg);
@@ -890,7 +890,6 @@ static gboolean bearer_setup_timeout(gpointer user_data)
 	DBG("service %p", service);
 
 	service->bearer_timeout = 0;
-
 	service->bearer_setup = FALSE;
 
 	return FALSE;
@@ -914,7 +913,6 @@ static void activate_bearer(struct mms_service *service)
 	DBG("service %p", service);
 
 	service->bearer_setup = TRUE;
-
 	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
 						bearer_setup_timeout, service);
 
@@ -937,7 +935,6 @@ static void deactivate_bearer(struct mms_service *service)
 	DBG("service %p", service);
 
 	service->bearer_setup = TRUE;
-
 	service->bearer_timeout = g_timeout_add_seconds(BEARER_SETUP_TIMEOUT,
 						bearer_setup_timeout, service);
 
@@ -958,7 +955,7 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 }
 
 static void result_request(guint status, const char *data_path,
-			   gpointer user_data)
+				gpointer user_data)
 {
 	DBG("status : %d", status);
 	DBG("result_path :%s", data_path);
@@ -991,10 +988,9 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	request->data_size += chunk_size;
 
 	written = write(request->recv_fd, chunk, chunk_size);
-	if (written != chunk_size) {
-		mms_error("only %zd/%zd bytes written\n",
-			  written, chunk_size);
 
+	if (written != chunk_size) {
+		mms_error("only %zd/%zd bytes written\n", written, chunk_size);
 		goto error;
 	}
 
@@ -1002,8 +998,8 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 error:
 	close(request->recv_fd);
-
 	unlink(request->tmp_path);
+
 complete:
 	service = request->service;
 
@@ -1027,16 +1023,16 @@ static guint process_request(struct mms_request *request)
 	switch (request->type) {
 	case MMS_REQUEST_TYPE_GET:
 		request->tmp_path = g_strdup_printf("%s.XXXXXX.tmp",
-						    request->data_path);
+							request->data_path);
 
 		request->recv_fd = g_mkstemp_full(request->tmp_path,
-						  O_WRONLY | O_CREAT | O_TRUNC,
-						  S_IWUSR | S_IRUSR);
+						O_WRONLY | O_CREAT | O_TRUNC,
+						S_IWUSR | S_IRUSR);
 		if (request->recv_fd < 0)
 			return 0;
 
 		id = g_web_request_get(service->web, request->location,
-				       web_get_cb, request);
+					web_get_cb, request);
 		if (id == 0) {
 			close(request->recv_fd);
 			unlink(request->tmp_path);
@@ -1110,12 +1106,9 @@ static struct mms_request *create_get_request(mms_request_result_cb_t result_cb)
 		return NULL;
 
 	request->type = MMS_REQUEST_TYPE_GET;
-
 	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
-					     "/.mms/receive.mms");
-
+						"/.mms/receive.mms");
 	request->result_cb = result_cb;
-
 	request->status = 0;
 
 	return request;
@@ -1153,7 +1146,6 @@ void mms_service_push_notify(struct mms_service *service,
 	msg.uuid = g_strdup(uuid);
 
 	request->location = g_strdup(msg.ni.location);
-
 	request->service = service;
 
 	g_queue_push_tail(service->request_queue, request);
@@ -1180,7 +1172,6 @@ void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
 	}
 
 	service->bearer_setup = FALSE;
-
 	service->bearer_active = active;
 
 	if (active == FALSE)
