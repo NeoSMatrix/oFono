@@ -97,7 +97,7 @@ static gboolean valid_number_format(const char *number)
 {
 	int len = strlen(number);
 	int begin = 0;
-	unsigned int cpt = 0;
+	unsigned int num_digits = 0;
 	int i;
 
 	if (!len)
@@ -111,9 +111,9 @@ static gboolean valid_number_format(const char *number)
 
 	for (i = begin; i < len; i++) {
 		if (number[i] >= '0' && number[i] <= '9') {
-			cpt++;
+			num_digits++;
 
-			if (cpt > 20)
+			if (num_digits > 20)
 				return FALSE;
 
 			continue;
