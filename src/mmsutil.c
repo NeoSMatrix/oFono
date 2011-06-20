@@ -1137,6 +1137,24 @@ static gboolean fb_put_value_length(struct file_buffer *fb, unsigned int val)
 	return TRUE;
 }
 
+static gboolean fb_put_uintvar(struct file_buffer *fb, unsigned int val)
+{
+	unsigned int count;
+
+	if (fb->size + MAX_ENC_VALUE_BYTES > FB_SIZE) {
+		if (fb_flush(fb) == FALSE)
+			return FALSE;
+	}
+
+	if (wsp_encode_uintvar(val, fb->buf + fb->size, FB_SIZE - fb->size,
+					&count) == FALSE)
+		return FALSE;
+
+	fb->size += count;
+
+	return TRUE;
+}
+
 static gboolean encode_short(struct file_buffer *fb,
 				enum mms_header header, void *user)
 {
@@ -1418,6 +1436,13 @@ static gboolean mms_encode_send_req(struct mms_message *msg,
 				MMS_HEADER_INVALID) == FALSE)
 		return FALSE;
 
+	if (msg->attachments == NULL)
+		goto done;
+
+	if (fb_put_uintvar(fb, g_slist_length(msg->attachments)) == FALSE)
+		return FALSE;
+
+done:
 	return fb_flush(fb);
 }
 
