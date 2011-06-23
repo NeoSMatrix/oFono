@@ -104,6 +104,7 @@ static const struct {
 struct file_buffer {
 	unsigned char buf[FB_SIZE];
 	unsigned int size;
+	unsigned int fsize;
 	int fd;
 };
 
@@ -1068,6 +1069,7 @@ void mms_message_free(struct mms_message *msg)
 static void fb_init(struct file_buffer *fb, int fd)
 {
 	fb->size = 0;
+	fb->fsize = 0;
 	fb->fd = fd;
 }
 
@@ -1088,9 +1090,16 @@ static gboolean fb_flush(struct file_buffer *fb)
 	if (size != fb->size)
 		return FALSE;
 
+	fb->fsize += size;
+
 	fb->size = 0;
 
 	return TRUE;
+}
+
+static unsigned int fb_get_file_size(struct file_buffer *fb)
+{
+	return fb->fsize + fb->size;
 }
 
 static void *fb_request(struct file_buffer *fb, unsigned int count)
@@ -1142,6 +1151,8 @@ static gboolean fb_copy(struct file_buffer *fb, const void *buf, unsigned int c)
 
 	if (written != c)
 		return FALSE;
+
+	fb->fsize += written;
 
 	return TRUE;
 }
@@ -1550,6 +1561,8 @@ static gboolean mms_encode_send_req_part(struct mms_attachment *part,
 {
 	if (mms_encode_send_req_part_header(part, fb) == FALSE)
 		return FALSE;
+
+	part->offset = fb_get_file_size(fb);
 
 	return fb_copy(fb, part->data, part->length);
 }
