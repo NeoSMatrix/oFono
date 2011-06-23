@@ -253,7 +253,7 @@ static const unsigned char mms_m_notify_ind_2[] = {
  * Expiry: 2011-05-27T10:39:58+0200
  * Location: http://eps3.de/O/Z9IZO
  */
-static const char mms_m_notify_ind_3[] = "./ni-mms-1-3-con-271.mms";
+static const char mms_m_notify_ind_3[] = "./unit/ni-mms-1-3-con-271.mms";
 
 /*
  * MMS M-Notify.Ind PDU 4
@@ -272,7 +272,7 @@ static const char mms_m_notify_ind_3[] = "./ni-mms-1-3-con-271.mms";
  * Location: http://abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi
  * /abcdefghi/abcdefghi/abcdefghi.mms
  */
-static const char mms_m_notify_ind_4[] = "./ni-mms-1-3-con-272.mms";
+static const char mms_m_notify_ind_4[] = "./unit/ni-mms-1-3-con-272.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 1
@@ -414,7 +414,7 @@ static const unsigned char mms_m_retrieve_conf_3[] = {
  * Msg-Id: (null)
  * Date: 2011-05-31T10:42:30+0200
  */
-static const char mms_m_retrieve_conf_4[] = "./rc-mms-1-3-con-210.mms";
+static const char mms_m_retrieve_conf_4[] = "./unit/rc-mms-1-3-con-210.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 5
@@ -433,7 +433,7 @@ static const char mms_m_retrieve_conf_4[] = "./rc-mms-1-3-con-210.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T11:23:30+0200
  */
-static const char mms_m_retrieve_conf_5[] = "./rc-mms-1-3-con-271.mms";
+static const char mms_m_retrieve_conf_5[] = "./unit/rc-mms-1-3-con-271.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 6
@@ -452,7 +452,7 @@ static const char mms_m_retrieve_conf_5[] = "./rc-mms-1-3-con-271.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T11:45:21+0200
  */
-static const char mms_m_retrieve_conf_6[] = "./rc-mms-1-3-con-212.mms";
+static const char mms_m_retrieve_conf_6[] = "./unit/rc-mms-1-3-con-212.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 7
@@ -471,7 +471,7 @@ static const char mms_m_retrieve_conf_6[] = "./rc-mms-1-3-con-212.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T11:52:45+0200
  */
-static const char mms_m_retrieve_conf_7[] = "./rc-mms-1-3-con-213.mms";
+static const char mms_m_retrieve_conf_7[] = "./unit/rc-mms-1-3-con-213.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 8
@@ -490,7 +490,7 @@ static const char mms_m_retrieve_conf_7[] = "./rc-mms-1-3-con-213.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T14:41:16+0200
  */
-static const char mms_m_retrieve_conf_8[] = "./rc-mms-1-3-con-214.mms";
+static const char mms_m_retrieve_conf_8[] = "./unit/rc-mms-1-3-con-214.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 9
@@ -509,7 +509,7 @@ static const char mms_m_retrieve_conf_8[] = "./rc-mms-1-3-con-214.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T15:08:09+0200
  */
-static const char mms_m_retrieve_conf_9[] = "./rc-mms-1-3-con-216.mms";
+static const char mms_m_retrieve_conf_9[] = "./unit/rc-mms-1-3-con-216.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 10
@@ -528,7 +528,7 @@ static const char mms_m_retrieve_conf_9[] = "./rc-mms-1-3-con-216.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T15:27:27+0200
  */
-static const char mms_m_retrieve_conf_10[] = "./rc-mms-1-3-con-220.mms";
+static const char mms_m_retrieve_conf_10[] = "./unit/rc-mms-1-3-con-220.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 11
@@ -547,7 +547,7 @@ static const char mms_m_retrieve_conf_10[] = "./rc-mms-1-3-con-220.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T15:38:00+0200
  */
-static const char mms_m_retrieve_conf_11[] = "./rc-mms-1-3-con-224.mms";
+static const char mms_m_retrieve_conf_11[] = "./unit/rc-mms-1-3-con-224.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 12
@@ -566,7 +566,7 @@ static const char mms_m_retrieve_conf_11[] = "./rc-mms-1-3-con-224.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T15:46:42+020
  */
-static const char mms_m_retrieve_conf_12[] = "./rc-mms-1-3-con-228.mms";
+static const char mms_m_retrieve_conf_12[] = "./unit/rc-mms-1-3-con-228.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 13
@@ -585,7 +585,7 @@ static const char mms_m_retrieve_conf_12[] = "./rc-mms-1-3-con-228.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T16:01:31+0200
  */
-static const char mms_m_retrieve_conf_13[] = "./rc-mms-1-3-con-211.mms";
+static const char mms_m_retrieve_conf_13[] = "./unit/rc-mms-1-3-con-211.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 14
@@ -605,7 +605,7 @@ static const char mms_m_retrieve_conf_13[] = "./rc-mms-1-3-con-211.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T16:25:07+0200
  */
-static const char mms_m_retrieve_conf_14[] = "./rc-mms-1-3-con-282.mms";
+static const char mms_m_retrieve_conf_14[] = "./unit/rc-mms-1-3-con-282.mms";
 
 /*
  * MMS M-Retrieve.Conf PDU 15
@@ -624,7 +624,7 @@ static const char mms_m_retrieve_conf_14[] = "./rc-mms-1-3-con-282.mms";
  * Msg-Id: (null)
  * Date: 2011-06-03T16:37:02+0200
  */
-static const char mms_m_retrieve_conf_15[] = "./rc-mms-1-3-con-281.mms";
+static const char mms_m_retrieve_conf_15[] = "./unit/rc-mms-1-3-con-281.mms";
 
 /*
  * MMS M-Send.Conf PDU 1
