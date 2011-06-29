@@ -275,3 +275,16 @@ const char *mms_store_file(const char *service_id, const char *path)
 
 	return uuid;
 }
+
+void mms_store_remove(const char *service_id, const char *uuid)
+{
+	GString *pathname;
+
+	pathname = generate_pdu_pathname(service_id, uuid);
+	if (pathname == NULL)
+		return;
+
+	unlink(pathname->str);
+
+	g_string_free(pathname, TRUE);
+}
