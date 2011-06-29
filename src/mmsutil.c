@@ -1121,7 +1121,7 @@ static void *fb_request(struct file_buffer *fb, unsigned int count)
 	return fb->buf;
 }
 
-static void *fb_request_field(struct file_buffer *fb, enum mms_header token,
+static void *fb_request_field(struct file_buffer *fb, unsigned char token,
 					unsigned int len)
 {
 	unsigned char *ptr;
