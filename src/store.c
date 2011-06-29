@@ -36,6 +36,12 @@
 
 #include "mms.h"
 
+#ifdef TEMP_FAILURE_RETRY
+#define TFR TEMP_FAILURE_RETRY
+#else
+#define TFR
+#endif
+
 #define MMS_SHA1_UUID_LEN 20
 
 static const char *digest_to_str(const unsigned char *digest)
@@ -137,13 +143,68 @@ static GString *generate_pdu_pathname(const char *service_id, const char *uuid)
 	return pathname;
 }
 
+/*
+ * Write a buffer to a file in a transactionally safe form
+ *
+ * Given a buffer, write it to a file named after
+ * @filename. However, to make sure the file contents are
+ * consistent (ie: a crash right after opening or during write()
+ * doesn't leave a file half baked), the contents are written to a
+ * file with a temporary name and when closed, it is renamed to the
+ * specified name (@filename).
+ */
+static ssize_t write_file(const unsigned char *buffer, size_t len,
+							const char *filename)
+{
+	char *tmp_file;
+	ssize_t written;
+	int fd;
+
+	tmp_file = g_strdup_printf("%s.XXXXXX.tmp", filename);
+
+	written = -1;
+
+	fd = TFR(g_mkstemp_full(tmp_file, O_WRONLY | O_CREAT | O_TRUNC,
+							S_IWUSR | S_IRUSR));
+	if (fd < 0)
+		goto error_mkstemp_full;
+
+	written = TFR(write(fd, buffer, len));
+
+	TFR(fdatasync(fd));
+
+	TFR(close(fd));
+
+	if (written != (ssize_t) len) {
+		written = -1;
+		goto error_write;
+	}
+
+	/*
+	 * Now that the file contents are written, rename to the real
+	 * file name; this way we are uniquely sure that the whole
+	 * thing is there.
+	 */
+	unlink(filename);
+
+	/* conserve @written's value from 'write' */
+	if (link(tmp_file, filename) == -1)
+		written = -1;
+
+error_write:
+	unlink(tmp_file);
+
+error_mkstemp_full:
+	g_free(tmp_file);
+
+	return written;
+}
+
 const char *mms_store(const char *service_id, unsigned char *pdu,
 							unsigned int len)
 {
 	GString *pathname;
 	const char *uuid;
-	ssize_t size;
-	int fd;
 
 	uuid = generate_uuid_from_pdu(pdu, len);
 	if (uuid == NULL)
@@ -153,22 +214,12 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 	if (pathname == NULL)
 		return NULL;
 
-	fd = open(pathname->str, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
-	if (fd < 0) {
-		mms_error("Failed to open %s", pathname->str);
-		uuid = NULL;
-		goto done;
-	}
-
-	size = write(fd, pdu, len);
-	if (size < 0)
+	if (write_file(pdu, len, pathname->str) < 0) {
 		mms_error("Failed to write to %s", pathname->str);
 
-	fdatasync(fd);
+		uuid = NULL;
+	}
 
-	close(fd);
-
-done:
 	g_string_free(pathname, TRUE);
 
 	return uuid;
