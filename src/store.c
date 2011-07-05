@@ -288,3 +288,23 @@ void mms_store_remove(const char *service_id, const char *uuid)
 
 	g_string_free(pathname, TRUE);
 }
+
+GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid)
+{
+	GKeyFile *keyfile;
+	GString *meta_path;
+
+	meta_path = generate_pdu_pathname(service_id, uuid);
+	if (meta_path == NULL)
+		return NULL;
+
+	g_string_append_printf(meta_path, ".status");
+
+	keyfile = g_key_file_new();
+
+	g_key_file_load_from_file(keyfile, meta_path->str, 0, NULL);
+
+	g_string_free(meta_path, TRUE);
+
+	return keyfile;
+}

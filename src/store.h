@@ -23,3 +23,5 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 							unsigned int len);
 const char *mms_store_file(const char *service_id, const char *path);
 void mms_store_remove(const char *service_id, const char *uuid);
+
+GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid);
