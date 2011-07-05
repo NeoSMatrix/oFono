@@ -308,3 +308,34 @@ GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid)
 
 	return keyfile;
 }
+
+static void meta_store_sync(const char *service_id, const char *uuid,
+							GKeyFile *keyfile)
+{
+	char *data;
+	gsize length = 0;
+	GString *meta_path;
+
+	meta_path = generate_pdu_pathname(service_id, uuid);
+	if (meta_path == NULL)
+		return;
+
+	g_string_append_printf(meta_path, ".status");
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(meta_path->str, data, length, NULL);
+
+	g_free(data);
+
+	g_string_free(meta_path, TRUE);
+}
+
+void mms_store_meta_close(const char *service_id, const char *uuid,
+					GKeyFile *keyfile, gboolean save)
+{
+	if (save == TRUE)
+		meta_store_sync(service_id, uuid, keyfile);
+
+	g_key_file_free(keyfile);
+}
