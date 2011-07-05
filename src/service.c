@@ -93,6 +93,11 @@ static void mms_request_destroy(struct mms_request *request)
 	g_free(request);
 }
 
+static GDBusSignalTable message_signals[] = {
+	{ "PropertyChanged", "sv" },
+	{ }
+};
+
 static gboolean valid_number_format(const char *number)
 {
 	int len = strlen(number);
@@ -797,7 +802,7 @@ int mms_message_register(const struct mms_service *service,
 	if (g_dbus_register_interface(connection, msg->path,
 						MMS_MESSAGE_INTERFACE,
 						NULL,
-						NULL, NULL,
+						message_signals, NULL,
 						NULL, NULL) == FALSE) {
 		mms_error("Failed to register message interface");
 		g_free(msg->path);
