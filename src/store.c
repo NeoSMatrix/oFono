@@ -286,6 +286,10 @@ void mms_store_remove(const char *service_id, const char *uuid)
 
 	unlink(pathname->str);
 
+	g_string_append_printf(pathname, ".status");
+
+	unlink(pathname->str);
+
 	g_string_free(pathname, TRUE);
 }
 
