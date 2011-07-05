@@ -1133,10 +1133,10 @@ void mms_service_push_notify(struct mms_service *service,
 		return;
 
 	if (mms_message_decode(data + nread, len - nread, &msg) == FALSE)
-		goto out;
+		goto error;
 
 	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
-		goto out;
+		goto error;
 
 	dump_notification_ind(&msg);
 
@@ -1152,6 +1152,11 @@ void mms_service_push_notify(struct mms_service *service,
 	g_queue_push_tail(service->request_queue, request);
 
 	activate_bearer(service);
+
+	goto out;
+
+error:
+	mms_store_remove(service->identity, uuid);
 
 out:
 	mms_message_free(&msg);
