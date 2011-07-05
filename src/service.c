@@ -259,7 +259,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	struct mms_message msg;
-	const struct mms_service *service;
+	struct mms_service *service;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -790,11 +790,9 @@ static void emit_message_added(const struct mms_service *service,
 	g_dbus_send_message(connection, signal);
 }
 
-int mms_message_register(const struct mms_service *service,
+int mms_message_register(struct mms_service *service,
 						struct mms_message *msg)
 {
-	DBG("message %p", msg);
-
 	msg->path = g_strdup_printf("%s/%s", service->path, msg->uuid);
 	if (msg->path == NULL)
 		return -ENOMEM;
@@ -803,12 +801,14 @@ int mms_message_register(const struct mms_service *service,
 						MMS_MESSAGE_INTERFACE,
 						NULL,
 						message_signals, NULL,
-						NULL, NULL) == FALSE) {
+						service, NULL) == FALSE) {
 		mms_error("Failed to register message interface");
 		g_free(msg->path);
 		msg->path = NULL;
 		return -EIO;;
 	}
+
+	DBG("message registered %s", msg->path);
 
 	emit_message_added(service, msg);
 
@@ -823,23 +823,17 @@ static void emit_message_removed(const char *svc_path, const char *msg_path)
 }
 
 int mms_message_unregister(const struct mms_service *service,
-						struct mms_message *msg)
+						const char *msg_path)
 {
-	DBG("message %p", msg);
+	emit_message_removed(service->path, msg_path);
 
-	if (msg->path == NULL)
-		return -EINVAL;
-
-	emit_message_removed(service->path, msg->path);
-
-	if (g_dbus_unregister_interface(connection, msg->path,
+	if (g_dbus_unregister_interface(connection, msg_path,
 					MMS_MESSAGE_INTERFACE) == FALSE) {
 		mms_error("Failed to unregister message interface");
 		return -EIO;
 	}
 
-	g_free(msg->path);
-	msg->path = NULL;
+	DBG("message unregistered %s", msg_path);
 
 	return 0;
 }
