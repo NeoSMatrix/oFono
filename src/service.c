@@ -93,6 +93,37 @@ static void mms_request_destroy(struct mms_request *request)
 	g_free(request);
 }
 
+static DBusMessage *msg_delete(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct mms_service *service = user_data;
+	DBusMessage *reply;
+	const char *path;
+	const char *uuid;
+
+	path = dbus_message_get_path(msg);
+
+	DBG("message path %s", path);
+
+	uuid = strrchr(path, '/');
+	if (uuid == NULL)
+		return __mms_error_invalid_args(msg);
+
+	if (mms_message_unregister(service, path) < 0)
+		return __mms_error_invalid_args(msg);
+
+	mms_store_remove(service->identity, uuid);
+
+	reply = dbus_message_new_method_return(msg);
+
+	return reply;
+}
+
+static GDBusMethodTable message_methods[] = {
+	{ "Delete", "", "", msg_delete },
+	{ }
+};
+
 static GDBusSignalTable message_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ }
@@ -799,7 +830,7 @@ int mms_message_register(struct mms_service *service,
 
 	if (g_dbus_register_interface(connection, msg->path,
 						MMS_MESSAGE_INTERFACE,
-						NULL,
+						message_methods,
 						message_signals, NULL,
 						service, NULL) == FALSE) {
 		mms_error("Failed to register message interface");
