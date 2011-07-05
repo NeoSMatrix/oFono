@@ -119,7 +119,56 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 	return reply;
 }
 
+static void emit_msg_status_changed(const char *path, const char *new_status)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+	DBusMessageIter variant;
+	const char *property = "status";
+
+	signal = dbus_message_new_signal(path, MMS_MESSAGE_INTERFACE,
+							"PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &property);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
+							"s", &variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &new_status);
+	dbus_message_iter_close_container(&iter, &variant);
+
+	g_dbus_send_message(connection, signal);
+}
+
+static DBusMessage *msg_mark_read(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	DBusMessage *reply;
+	const char *path;
+	const char *uuid;
+
+	path = dbus_message_get_path(msg);
+
+	DBG("message path %s", path);
+
+	uuid = strrchr(path, '/');
+	if (uuid == NULL)
+		return __mms_error_invalid_args(msg);
+
+	/* TODO: update meta status */
+
+	emit_msg_status_changed(path, "read");
+
+	reply = dbus_message_new_method_return(msg);
+
+	return reply;
+}
+
 static GDBusMethodTable message_methods[] = {
+	{ "MarkRead", "", "", msg_mark_read },
 	{ "Delete", "", "", msg_delete },
 	{ }
 };
