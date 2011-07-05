@@ -1122,6 +1122,7 @@ void mms_service_push_notify(struct mms_service *service,
 	struct mms_message msg;
 	unsigned int nread;
 	const char *uuid;
+	GKeyFile *meta;
 
 	DBG("service %p data %p len %d", service, data, len);
 
@@ -1139,6 +1140,16 @@ void mms_service_push_notify(struct mms_service *service,
 		goto error;
 
 	dump_notification_ind(&msg);
+
+	meta = mms_store_meta_open(service->identity, uuid);
+	if (meta == NULL)
+		goto error;
+
+	g_key_file_set_boolean(meta, "info", "read", FALSE);
+
+	g_key_file_set_string(meta, "info", "status", "notify.ind");
+
+	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
 	request = create_get_request(result_request);
 	if (request == NULL)
