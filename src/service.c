@@ -95,7 +95,6 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct mms_service *service = user_data;
-	DBusMessage *reply;
 	const char *path;
 	const char *uuid;
 
@@ -112,9 +111,7 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 
 	mms_store_remove(service->identity, uuid);
 
-	reply = dbus_message_new_method_return(msg);
-
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static void emit_msg_status_changed(const char *path, const char *new_status)
@@ -134,7 +131,7 @@ static void emit_msg_status_changed(const char *path, const char *new_status)
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &property);
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-							"s", &variant);
+					DBUS_TYPE_STRING_AS_STRING, &variant);
 	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &new_status);
 	dbus_message_iter_close_container(&iter, &variant);
 
@@ -144,7 +141,6 @@ static void emit_msg_status_changed(const char *path, const char *new_status)
 static DBusMessage *msg_mark_read(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	DBusMessage *reply;
 	const char *path;
 	const char *uuid;
 
@@ -160,14 +156,12 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 
 	emit_msg_status_changed(path, "read");
 
-	reply = dbus_message_new_method_return(msg);
-
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable message_methods[] = {
 	{ "MarkRead", "", "", msg_mark_read },
-	{ "Delete", "", "", msg_delete },
+	{ "Delete",   "", "", msg_delete },
 	{ }
 };
 
