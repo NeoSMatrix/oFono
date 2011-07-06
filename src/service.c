@@ -62,6 +62,7 @@ struct mms_service {
 	GQueue *request_queue;
 	guint current_request_id;
 	GWeb *web;
+	GHashTable *messages;
 };
 
 enum mms_request_type {
@@ -400,6 +401,14 @@ struct mms_service *mms_service_create(void)
 
 	service->current_request_id = 0;
 
+	service->messages = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+	if (service->messages == NULL) {
+		g_queue_free(service->request_queue);
+		g_free(service);
+		return NULL;
+	}
+
 	DBG("service %p", service);
 
 	return service;
@@ -433,6 +442,8 @@ void mms_service_unref(struct mms_service *service)
 		mms_request_destroy(request);
 
 	g_queue_free(service->request_queue);
+
+	g_hash_table_destroy(service->messages);
 
 	if (service->web != NULL)
 		g_web_unref(service->web);
@@ -880,6 +891,9 @@ int mms_message_register(struct mms_service *service,
 		return -EIO;;
 	}
 
+	g_hash_table_replace(service->messages, g_strdup(msg->path),
+							g_strdup(msg->uuid));
+
 	DBG("message registered %s", msg->path);
 
 	emit_message_added(service, msg);
@@ -904,6 +918,8 @@ int mms_message_unregister(const struct mms_service *service,
 		mms_error("Failed to unregister message interface");
 		return -EIO;
 	}
+
+	g_hash_table_remove(service->messages, msg_path);
 
 	DBG("message unregistered %s", msg_path);
 
