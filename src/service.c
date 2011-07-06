@@ -72,7 +72,6 @@ enum mms_request_type {
 struct mms_request {
 	enum mms_request_type type;
 	char *data_path;
-	char *tmp_path;
 	char *location;
 	gsize data_size;
 	int recv_fd;
@@ -88,7 +87,6 @@ static DBusConnection *connection;
 static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
-	g_free(request->tmp_path);
 	g_free(request->location);
 	g_free(request);
 }
@@ -1060,8 +1058,6 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 		DBG("status: %03u", request->status);
 		DBG("data size = %zd", request->data_size);
 
-		g_rename(request->tmp_path, request->data_path);
-
 		goto complete;
 	}
 
@@ -1078,7 +1074,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 error:
 	close(request->recv_fd);
-	unlink(request->tmp_path);
+	unlink(request->data_path);
 
 complete:
 	service = request->service;
@@ -1102,20 +1098,11 @@ static guint process_request(struct mms_request *request)
 
 	switch (request->type) {
 	case MMS_REQUEST_TYPE_GET:
-		request->tmp_path = g_strdup_printf("%s.XXXXXX.tmp",
-							request->data_path);
-
-		request->recv_fd = g_mkstemp_full(request->tmp_path,
-						O_WRONLY | O_CREAT | O_TRUNC,
-						S_IWUSR | S_IRUSR);
-		if (request->recv_fd < 0)
-			return 0;
-
 		id = g_web_request_get(service->web, request->location,
 					web_get_cb, request);
 		if (id == 0) {
 			close(request->recv_fd);
-			unlink(request->tmp_path);
+			unlink(request->data_path);
 		}
 
 		return id;
@@ -1187,7 +1174,16 @@ static struct mms_request *create_get_request(mms_request_result_cb_t result_cb)
 
 	request->type = MMS_REQUEST_TYPE_GET;
 	request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
-						"/.mms/receive.mms");
+						"/.mms/receive.XXXXXX.mms");
+	request->recv_fd = g_mkstemp_full(request->data_path,
+					  O_WRONLY | O_CREAT | O_TRUNC,
+					  S_IWUSR | S_IRUSR);
+	if (request->recv_fd < 0) {
+		g_free(request);
+
+		return NULL;
+	}
+
 	request->result_cb = result_cb;
 	request->status = 0;
 
