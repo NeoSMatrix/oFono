@@ -103,7 +103,7 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 
 	DBG("message path %s", path);
 
-	uuid = strrchr(path, '/');
+	uuid = g_hash_table_lookup(service->messages, path);
 	if (uuid == NULL)
 		return __mms_error_invalid_args(msg);
 
@@ -142,6 +142,7 @@ static void emit_msg_status_changed(const char *path, const char *new_status)
 static DBusMessage *msg_mark_read(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	struct mms_service *service = user_data;
 	const char *path;
 	const char *uuid;
 
@@ -149,7 +150,7 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 
 	DBG("message path %s", path);
 
-	uuid = strrchr(path, '/');
+	uuid = g_hash_table_lookup(service->messages, path);
 	if (uuid == NULL)
 		return __mms_error_invalid_args(msg);
 
