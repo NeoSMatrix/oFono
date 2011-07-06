@@ -116,27 +116,21 @@ static const char *generate_uuid_from_pdu(unsigned char *pdu, unsigned int len)
 	return digest_to_str(digest);
 }
 
-static GString *generate_pdu_pathname(const char *service_id, const char *uuid)
+static char *generate_pdu_pathname(const char *service_id, const char *uuid)
 {
-	GString *pathname;
+	char *pathname;
 	const char *homedir;
 
 	homedir = g_get_home_dir();
 	if (homedir == NULL)
 		return NULL;
 
-	pathname = g_string_new(homedir);
+	pathname = g_strdup_printf("%s/.mms/%s/%s", homedir, service_id, uuid);
 
-	g_string_append_printf(pathname, "/.mms/%s/", service_id);
+	if (create_dirs(pathname, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
+		mms_error("Failed to create path %s", pathname);
 
-	g_string_append(pathname, uuid);
-
-	DBG("pathname %s", pathname->str);
-
-	if (create_dirs(pathname->str, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
-		mms_error("Failed to create path %s", pathname->str);
-
-		g_string_free(pathname, TRUE);
+		g_free(pathname);
 		return NULL;
 	}
 
@@ -203,7 +197,7 @@ error_mkstemp_full:
 const char *mms_store(const char *service_id, unsigned char *pdu,
 							unsigned int len)
 {
-	GString *pathname;
+	char *pathname;
 	const char *uuid;
 
 	uuid = generate_uuid_from_pdu(pdu, len);
@@ -214,20 +208,22 @@ const char *mms_store(const char *service_id, unsigned char *pdu,
 	if (pathname == NULL)
 		return NULL;
 
-	if (write_file(pdu, len, pathname->str) < 0) {
-		mms_error("Failed to write to %s", pathname->str);
+	if (write_file(pdu, len, pathname) < 0) {
+		mms_error("Failed to write to %s", pathname);
 
 		uuid = NULL;
 	}
 
-	g_string_free(pathname, TRUE);
+	DBG("pathname %s", pathname);
+
+	g_free(pathname);
 
 	return uuid;
 }
 
 const char *mms_store_file(const char *service_id, const char *path)
 {
-	GString *pathname;
+	char *pathname;
 	const char *uuid;
 	int fd;
 	struct stat st;
@@ -265,50 +261,58 @@ const char *mms_store_file(const char *service_id, const char *path)
 	if (pathname == NULL)
 		return NULL;
 
-	if (g_rename(path, pathname->str) < 0) {
-		mms_error("Failed to rename %s to %s\n", path, pathname->str);
+	if (g_rename(path, pathname) < 0) {
+		mms_error("Failed to rename %s to %s\n", path, pathname);
 
 		uuid = NULL;
 	}
 
-	g_string_free(pathname, TRUE);
+	DBG("pathname %s", pathname);
+
+	g_free(pathname);
 
 	return uuid;
 }
 
 void mms_store_remove(const char *service_id, const char *uuid)
 {
-	GString *pathname;
+	char *pdu_path;
+	char *meta_path;
 
-	pathname = generate_pdu_pathname(service_id, uuid);
-	if (pathname == NULL)
+	pdu_path = generate_pdu_pathname(service_id, uuid);
+	if (pdu_path == NULL)
 		return;
 
-	unlink(pathname->str);
+	unlink(pdu_path);
 
-	g_string_append_printf(pathname, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
 
-	unlink(pathname->str);
+	g_free(pdu_path);
 
-	g_string_free(pathname, TRUE);
+	unlink(meta_path);
+
+	g_free(meta_path);
 }
 
 GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid)
 {
 	GKeyFile *keyfile;
-	GString *meta_path;
+	char *pdu_path;
+	char *meta_path;
 
-	meta_path = generate_pdu_pathname(service_id, uuid);
-	if (meta_path == NULL)
+	pdu_path = generate_pdu_pathname(service_id, uuid);
+	if (pdu_path == NULL)
 		return NULL;
 
-	g_string_append_printf(meta_path, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
+
+	g_free(pdu_path);
 
 	keyfile = g_key_file_new();
 
-	g_key_file_load_from_file(keyfile, meta_path->str, 0, NULL);
+	g_key_file_load_from_file(keyfile, meta_path, 0, NULL);
 
-	g_string_free(meta_path, TRUE);
+	g_free(meta_path);
 
 	return keyfile;
 }
@@ -318,21 +322,24 @@ static void meta_store_sync(const char *service_id, const char *uuid,
 {
 	char *data;
 	gsize length = 0;
-	GString *meta_path;
+	char *pdu_path;
+	char *meta_path;
 
-	meta_path = generate_pdu_pathname(service_id, uuid);
-	if (meta_path == NULL)
+	pdu_path = generate_pdu_pathname(service_id, uuid);
+	if (pdu_path == NULL)
 		return;
 
-	g_string_append_printf(meta_path, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
+
+	g_free(pdu_path);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
-	g_file_set_contents(meta_path->str, data, length, NULL);
+	g_file_set_contents(meta_path, data, length, NULL);
 
 	g_free(data);
 
-	g_string_free(meta_path, TRUE);
+	g_free(meta_path);
 }
 
 void mms_store_meta_close(const char *service_id, const char *uuid,
