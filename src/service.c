@@ -145,6 +145,8 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 	struct mms_service *service = user_data;
 	const char *path;
 	const char *uuid;
+	const char *state;
+	GKeyFile *meta;
 
 	path = dbus_message_get_path(msg);
 
@@ -154,7 +156,22 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 	if (uuid == NULL)
 		return __mms_error_invalid_args(msg);
 
-	/* TODO: update meta status */
+	meta = mms_store_meta_open(service->identity, uuid);
+
+	state = g_key_file_get_string(meta, "info", "state", NULL);
+	if (state == NULL) {
+		mms_store_meta_close(service->identity, uuid, meta, FALSE);
+		return __mms_error_invalid_args(msg);
+	}
+
+	if (strcmp(state, "received") != 0 && strcmp(state, "sent") != 0) {
+		mms_store_meta_close(service->identity, uuid, meta, FALSE);
+		return __mms_error_invalid_args(msg);
+	}
+
+	g_key_file_set_boolean(meta, "info", "read", TRUE);
+
+	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
 	emit_msg_status_changed(path, "read");
 
