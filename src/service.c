@@ -1226,7 +1226,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	g_key_file_set_boolean(meta, "info", "read", FALSE);
 
-	g_key_file_set_string(meta, "info", "status", "notify.ind");
+	g_key_file_set_string(meta, "info", "state", "notification");
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
