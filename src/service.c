@@ -1035,8 +1035,66 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 static void result_request(guint status, const char *data_path,
 				gpointer user_data)
 {
-	DBG("status : %d", status);
-	DBG("result_path :%s", data_path);
+	int fd;
+	struct mms_message msg;
+	struct stat st;
+	unsigned char *pdu;
+	struct mms_service *service = user_data;
+	const char *uuid;
+	GKeyFile *meta;
+
+	if (status != 200)
+		return;
+
+	fd = open(data_path, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s", data_path);
+
+		return;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		mms_error("Failed to stat %s", data_path);
+
+		close(fd);
+
+		return;
+	}
+
+	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+
+	close(fd);
+
+	if (pdu == NULL || pdu == MAP_FAILED)
+		goto exit;
+
+	uuid = mms_store_file(service->identity, data_path);
+	if (uuid == NULL)
+		goto exit;
+
+	if (mms_message_decode(pdu, st.st_size, &msg) == FALSE) {
+		mms_error("Failed to decode %s", data_path);
+
+		goto error;
+	}
+
+	meta = mms_store_meta_open(service->identity, uuid);
+	if (meta == NULL)
+		goto error;
+
+	g_key_file_set_boolean(meta, "info", "read", FALSE);
+
+	g_key_file_set_string(meta, "info", "state", "downloaded");
+
+	mms_store_meta_close(service->identity, uuid, meta, TRUE);
+
+	goto exit;
+
+error:
+	mms_store_remove(service->identity, uuid);
+
+exit:
+	munmap(pdu, st.st_size);
 }
 
 static gboolean web_get_cb(GWebResult *result, gpointer user_data)
@@ -1080,7 +1138,8 @@ complete:
 	service = request->service;
 
 	if (request->result_cb != NULL)
-		request->result_cb(request->status, request->data_path, NULL);
+		request->result_cb(request->status,
+				   request->data_path, service);
 
 	mms_request_destroy(request);
 
