@@ -77,7 +77,7 @@ struct mms_request {
 	gsize data_size;
 	gpointer data;
 	gsize offset;
-	int recv_fd;
+	int fd;
 	guint16 status;
 	struct mms_service *service;
 	mms_request_result_cb_t result_cb;
@@ -372,10 +372,10 @@ static struct mms_request *create_request(enum mms_request_type type,
 		break;
 	}
 
-	request->recv_fd = g_mkstemp_full(request->data_path,
-					  O_WRONLY | O_CREAT | O_TRUNC,
-					  S_IWUSR | S_IRUSR);
-	if (request->recv_fd < 0) {
+	request->fd = g_mkstemp_full(request->data_path,
+				     O_WRONLY | O_CREAT | O_TRUNC,
+				     S_IWUSR | S_IRUSR);
+	if (request->fd < 0) {
 		g_free(request->data_path);
 
 		g_free(request);
@@ -1112,7 +1112,7 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static void result_request(guint status, const char *data_path,
+static void result_request_get(guint status, const char *data_path,
 				gpointer user_data)
 {
 	int fd;
@@ -1189,7 +1189,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 		goto error;
 
 	if (chunk_size == 0) {
-		close(request->recv_fd);
+		close(request->fd);
 
 		request->status = g_web_result_get_status(result);
 
@@ -1201,7 +1201,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 	request->data_size += chunk_size;
 
-	written = write(request->recv_fd, chunk, chunk_size);
+	written = write(request->fd, chunk, chunk_size);
 
 	if (written != chunk_size) {
 		mms_error("only %zd/%zd bytes written\n", written, chunk_size);
@@ -1211,7 +1211,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	return TRUE;
 
 error:
-	close(request->recv_fd);
+	close(request->fd);
 	unlink(request->data_path);
 
 complete:
@@ -1240,7 +1240,7 @@ static guint process_request(struct mms_request *request)
 		id = g_web_request_get(service->web, request->location,
 					web_get_cb, request);
 		if (id == 0) {
-			close(request->recv_fd);
+			close(request->fd);
 			unlink(request->data_path);
 		}
 
@@ -1343,7 +1343,7 @@ void mms_service_push_notify(struct mms_service *service,
 	location = g_strdup(msg.ni.location);
 
 	request = create_request(MMS_REQUEST_TYPE_GET,
-				 result_request, location, service);
+				 result_request_get, location, service);
 	if (request == NULL) {
 		g_free(location);
 
