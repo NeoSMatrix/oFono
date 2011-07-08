@@ -444,6 +444,71 @@ static inline char *create_transaction_id(void)
 			       "0123456789ABCDEF0123456789ABCDEF");
 }
 
+static void result_request_post(guint status, const char *data_path,
+				gpointer user_data)
+{
+	int fd;
+	struct mms_message *msg;
+	struct stat st;
+	unsigned char *pdu;
+	struct mms_service *service = user_data;
+	const char *uuid;
+	GKeyFile *meta;
+
+	if (status != 200)
+		return;
+
+	fd = open(data_path, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s", data_path);
+		return;
+	}
+
+	msg = g_try_new0(struct mms_message, 1);
+	if (msg == NULL)
+		goto close;
+
+	if (fstat(fd, &st) < 0) {
+		mms_error("Failed to stat %s", data_path);
+		goto free_msg;
+	}
+
+	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (pdu == NULL || pdu == MAP_FAILED)
+		goto free_msg;
+
+	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
+		mms_error("Failed to decode pdu %s", data_path);
+		goto unmap;
+	}
+
+	uuid = mms_store_file(service->identity, data_path);
+
+	meta = mms_store_meta_open(service->identity, uuid);
+	if (meta == NULL)
+		goto unmap;
+
+	g_key_file_set_string(meta, "info", "state", "sent");
+
+	mms_store_meta_close(service->identity, uuid, meta, TRUE);
+
+	mms_debug("response status : %d", msg->sc.rsp_status);
+
+	msg->uuid = g_strdup(uuid);
+
+	mms_message_register(service, msg);
+
+unmap:
+	munmap(pdu, st.st_size);
+
+free_msg:
+	mms_message_free(msg);
+	g_free(msg);
+
+close:
+	close(fd);
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
@@ -474,7 +539,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 	if (msg->transaction_id == NULL)
 		return __mms_error_trans_failure(dbus_msg);
 
-	request = create_request(MMS_REQUEST_TYPE_POST, NULL, NULL, service);
+	request = create_request(MMS_REQUEST_TYPE_POST,
+				 result_request_post, NULL, service);
 	if (request == NULL)
 		return __mms_error_trans_failure(dbus_msg);
 
