@@ -532,6 +532,32 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 	return service;
 }
 
+static gboolean unregister_message(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	struct mms_service *service = user_data;
+	char *uuid = value;
+
+	mms_message_unregister(service, uuid);
+
+	return TRUE;
+}
+
+static void destroy_message_table(struct mms_service *service)
+{
+	/*
+	 * Each message is first unregistered from dbus, then destroyed from
+	 * the hash table.
+	 * This step is required because we need access to mms_service when
+	 * unregistering the message object.
+	 */
+	g_hash_table_foreach_remove(service->messages, unregister_message,
+								service);
+
+	g_hash_table_destroy(service->messages);
+	service->messages = NULL;
+}
+
 void mms_service_unref(struct mms_service *service)
 {
 	struct mms_request *request;
@@ -549,7 +575,8 @@ void mms_service_unref(struct mms_service *service)
 
 	g_queue_free(service->request_queue);
 
-	g_hash_table_destroy(service->messages);
+	if (service->messages != NULL)
+		destroy_message_table(service);
 
 	if (service->web != NULL)
 		g_web_unref(service->web);
@@ -645,6 +672,9 @@ int mms_service_unregister(struct mms_service *service)
 
 	if (service->path == NULL)
 		return -EINVAL;
+
+	if (service->messages != NULL)
+		destroy_message_table(service);
 
 	if (g_dbus_unregister_interface(connection, service->path,
 					MMS_SERVICE_INTERFACE) == FALSE) {
