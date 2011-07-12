@@ -98,21 +98,21 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct mms_service *service = user_data;
+	struct mms_message *mms;
 	const char *path;
-	const char *uuid;
 
 	path = dbus_message_get_path(msg);
 
 	DBG("message path %s", path);
 
-	uuid = g_hash_table_lookup(service->messages, path);
-	if (uuid == NULL)
+	mms = g_hash_table_lookup(service->messages, path);
+	if (mms == NULL)
 		return __mms_error_invalid_args(msg);
 
 	if (mms_message_unregister(service, path) < 0)
 		return __mms_error_invalid_args(msg);
 
-	mms_store_remove(service->identity, uuid);
+	mms_store_remove(service->identity, mms->uuid);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -145,8 +145,8 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct mms_service *service = user_data;
+	struct mms_message *mms;
 	const char *path;
-	const char *uuid;
 	const char *state;
 	GKeyFile *meta;
 
@@ -154,26 +154,26 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 
 	DBG("message path %s", path);
 
-	uuid = g_hash_table_lookup(service->messages, path);
-	if (uuid == NULL)
+	mms = g_hash_table_lookup(service->messages, path);
+	if (mms == NULL)
 		return __mms_error_invalid_args(msg);
 
-	meta = mms_store_meta_open(service->identity, uuid);
+	meta = mms_store_meta_open(service->identity, mms->uuid);
 
 	state = g_key_file_get_string(meta, "info", "state", NULL);
 	if (state == NULL) {
-		mms_store_meta_close(service->identity, uuid, meta, FALSE);
+		mms_store_meta_close(service->identity, mms->uuid, meta, FALSE);
 		return __mms_error_invalid_args(msg);
 	}
 
 	if (strcmp(state, "received") != 0 && strcmp(state, "sent") != 0) {
-		mms_store_meta_close(service->identity, uuid, meta, FALSE);
+		mms_store_meta_close(service->identity, mms->uuid, meta, FALSE);
 		return __mms_error_invalid_args(msg);
 	}
 
 	g_key_file_set_boolean(meta, "info", "read", TRUE);
 
-	mms_store_meta_close(service->identity, uuid, meta, TRUE);
+	mms_store_meta_close(service->identity, mms->uuid, meta, TRUE);
 
 	emit_msg_status_changed(path, "read");
 
@@ -439,19 +439,22 @@ static DBusMessage *send_message(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
-	struct mms_message msg;
+	struct mms_message *msg;
 	struct mms_service *service;
 
-	memset(&msg, 0, sizeof(msg));
+	msg = g_new0(struct mms_message, 1);
+	if (msg == NULL)
+		return __mms_error_trans_failure(dbus_msg);
 
-	msg.type = MMS_MESSAGE_TYPE_SEND_REQ;
+	msg->type = MMS_MESSAGE_TYPE_SEND_REQ;
 
-	msg.sr.status = MMS_MESSAGE_STATUS_DRAFT;
+	msg->sr.status = MMS_MESSAGE_STATUS_DRAFT;
 
-	if (send_message_get_args(dbus_msg, &msg) == FALSE) {
+	if (send_message_get_args(dbus_msg, msg) == FALSE) {
 		mms_debug("Invalid arguments");
 
-		mms_message_free(&msg);
+		mms_message_free(msg);
+		g_free(msg);
 
 		return __mms_error_invalid_args(dbus_msg);
 	}
@@ -463,8 +466,12 @@ static DBusMessage *send_message(DBusConnection *conn,
 	 */
 
 	service = data;
-	if (mms_message_register(service, &msg) < 0)
+	if (mms_message_register(service, msg) < 0) {
+		mms_message_free(msg);
+		g_free(msg);
+
 		return __mms_error_trans_failure(dbus_msg);
+	}
 
 	reply = dbus_message_new_method_return(dbus_msg);
 	if (reply == NULL)
@@ -473,9 +480,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	dbus_message_iter_init_append(reply, &iter);
 
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-								&msg.path);
-
-	mms_message_free(&msg);
+								&msg->path);
 
 	return reply;
 }
@@ -490,6 +495,14 @@ static GDBusSignalTable service_signals[] = {
 	{ "MessageRemoved", "o" },
 	{ }
 };
+
+static void free_message(gpointer data)
+{
+	struct mms_message *mms = data;
+
+	mms_message_free(mms);
+	g_free(mms);
+}
 
 struct mms_service *mms_service_create(void)
 {
@@ -510,7 +523,7 @@ struct mms_service *mms_service_create(void)
 	service->current_request_id = 0;
 
 	service->messages = g_hash_table_new_full(g_str_hash, g_str_equal,
-							g_free, g_free);
+							NULL, free_message);
 	if (service->messages == NULL) {
 		g_queue_free(service->request_queue);
 		g_free(service);
@@ -1027,8 +1040,7 @@ int mms_message_register(struct mms_service *service,
 		return -EIO;;
 	}
 
-	g_hash_table_replace(service->messages, g_strdup(msg->path),
-							g_strdup(msg->uuid));
+	g_hash_table_replace(service->messages, msg->path, msg);
 
 	DBG("message registered %s", msg->path);
 
