@@ -418,8 +418,10 @@ static const char *get_text_entry(unsigned int value,
 
 gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 						const void **out_value,
-						unsigned int *out_read)
+						unsigned int *out_read,
+						unsigned int *out_param_len)
 {
+	unsigned int param_len = 0;
 	unsigned int len;
 	const void *data;
 	enum wsp_value_type value_type;
@@ -437,7 +439,8 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 						&value_len, &media_len) != TRUE)
 			return FALSE;
 
-		consumed -= len - media_len;
+		param_len = len - media_len;
+		consumed -= param_len;
 
 		/* Handle Well-Known-Media Long-Integer case */
 		if (value_type == WSP_VALUE_TYPE_LONG) {
@@ -472,6 +475,9 @@ gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 
 	if (out_read)
 		*out_read = consumed;
+
+	if (out_param_len)
+		*out_param_len = param_len;
 
 	return TRUE;
 }

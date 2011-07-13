@@ -250,6 +250,7 @@ static void test_decode_push(gconstpointer data)
 	gboolean ret;
 	unsigned int nread;
 	unsigned int consumed;
+	unsigned int param_len;
 
 	g_assert(pdu[1] == 0x06);
 
@@ -270,10 +271,11 @@ static void test_decode_push(gconstpointer data)
 	}
 
 	ret = wsp_decode_content_type(pdu + nread, headerslen, &content_data,
-								&consumed);
+					&consumed, &param_len);
 	g_assert(ret == TRUE);
 
-	/* Consume Content Type bytes */
+	/* Consume Content Type bytes, including parameters */
+	consumed += param_len;
 	nread += consumed;
 
 	if (g_test_verbose())

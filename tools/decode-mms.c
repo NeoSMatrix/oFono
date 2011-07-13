@@ -319,7 +319,7 @@ static void decode_message(const unsigned char *data, unsigned int size)
 	}
 
 	if (wsp_decode_content_type(ct, ct_len, &multipart_mimetype,
-					&consumed) == FALSE) {
+					&consumed, NULL) == FALSE) {
 		printf("Unable to decode multipart-mimetype\n");
 		return;
 	}
@@ -334,7 +334,7 @@ static void decode_message(const unsigned char *data, unsigned int size)
 		ct_len = wsp_multipart_iter_get_content_type_len(&mi);
 
 		if (wsp_decode_content_type(ct, ct_len, &multipart_mimetype,
-						&consumed) == FALSE) {
+						&consumed, NULL) == FALSE) {
 			printf("Unable to decode part multipart-mimetype\n");
 			return;
 		}

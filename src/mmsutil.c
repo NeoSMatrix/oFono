@@ -872,7 +872,7 @@ static gboolean mms_parse_attachments(struct wsp_header_iter *iter,
 		ct_len = wsp_multipart_iter_get_content_type_len(&mi);
 
 		if (wsp_decode_content_type(ct, ct_len, &mimetype,
-						&consumed) == FALSE)
+						&consumed, NULL) == FALSE)
 			return FALSE;
 
 		charset = decode_attachment_charset(ct + consumed,

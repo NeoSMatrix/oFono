@@ -148,7 +148,8 @@ const char *wsp_decode_quoted_string(const unsigned char *pdu, unsigned int len,
 
 gboolean wsp_decode_content_type(const unsigned char *pdu, unsigned int max,
 					const void **out_value,
-					unsigned int *out_read);
+					unsigned int *out_read,
+					unsigned int *out_param_len);
 gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
 					const void **out_value);
 

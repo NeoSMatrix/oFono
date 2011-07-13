@@ -322,6 +322,7 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 						unsigned int *offset)
 {
 	unsigned int headerslen;
+	unsigned int param_len;
 	const void *ct;
 	const void *aid;
 	struct wsp_header_iter iter;
@@ -359,13 +360,14 @@ gboolean mms_push_notify(unsigned char *pdu, unsigned int len,
 
 	/* Try to decode content-type */
 	if (wsp_decode_content_type(pdu + nread, headerslen, &ct,
-					&consumed) == FALSE)
+			&consumed, &param_len) == FALSE)
 		return FALSE;
 
 	if (ct == NULL)
 		return FALSE;
 
-	/* Consume Content Type bytes */
+	/* Consume Content Type bytes, including parameters */
+	consumed += param_len;
 	nread += consumed;
 
 	/* Parse header to decode application_id */
