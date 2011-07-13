@@ -54,7 +54,8 @@ test_scripts = test/monitor-mms test/get-services test/send-message \
 		test/delete-message test/mark-message-read
 
 doc_files = doc/architecture.txt doc/consumer.txt doc/manager-api.txt \
-				doc/service-api.txt doc/message-api.txt
+				doc/service-api.txt doc/message-api.txt \
+				doc/storage.txt
 
 unit_test_data_files = unit/ni-mms-1-3-con-271.mms \
 				unit/ni-mms-1-3-con-272.mms \

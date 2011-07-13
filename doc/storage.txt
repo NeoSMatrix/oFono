@@ -1,0 +1,33 @@
+mmsd storage design
+*******************
+
+The mmsd persists the mms messages on the file system in a directory named
+".mms/<service_identifier>" under the user home directory.
+(e.g: /home/<user_name>/.mms/246813579/ -> "246813579" is the service
+identifier)
+
+A mms message is stored in its raw PDU format in a file named with a <SHA1>
+generated against its content (e.g: D1D3D50E0571C68E18628CFC6FAC9A75F5BAD2B5).
+Another file with the same prefix, named <SHA1>.status
+(e.g: D1D3D50E0571C68E18628CFC6FAC9A75F5BAD2B5.status) contains meta
+information related to the raw PDU.
+
+Meta file Example
+=================
+
+[info]
+read=false
+state=notification
+
+
+Meta file Keys/Values details
+=============================
+
+read: The message local "Read" status, possible values: "true" or "false".
+
+state: The message local state, possible values can be:
+    - "notification": m-Notify.Ind PDU not yet downloaded.
+    - "downloaded": m-Retrieve.Conf PDU downloaded, but not yet acknowledged.
+    - "received": m-Retrieve.Conf PDU downloaded and successfully acknowledged.
+    - "draft": m-Send.Req PDU ready for sending.
+    - "sent": m-Send.Req PDU successfully sent.
