@@ -103,6 +103,7 @@ struct mms_send_req {
 	enum mms_message_status status;
 	char *to;
 	time_t date;
+	char *content_type;
 	char *smil;
 };
 
