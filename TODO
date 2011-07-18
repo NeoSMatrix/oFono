@@ -68,14 +68,6 @@ MMS Submission
 MMS Reception
 =============
 
-- Add MMS M-Retrieve.conf PDU decoding support.
-  The M-Retrieve.conf PDU has to be decoded in order to fill the mms_message
-  structure.
-
-  Priority: High
-  Complexity: C2
-  Owner: Regis Merlino <regis.merlino@linux.intel.com>
-
 - Add MMS Automatic Retrieval support.
   Add the M-Notify.Ind PDU entry to the META file (status: notify.ind).
   Initiate a HTTP GET Request with the "Content Location" URI provided in the
@@ -105,36 +97,6 @@ MMS Reception
 
 MMS Storage
 ===========
-
-- Add META file handling support.
-  A single META file including all the current MMS PDU SHA1 and information
-  about their "status" is needed.
-  The proposed first implementation should use a key-value file format with the
-  PDUs SHA1 used as group entry, and a "status" as a key.
-  If later on, with some measurement we notice that the implementation is not
-  efficient enough when the system has 2000 or more messages, we should
-  consider to re-implement the feature in a smarter way.
-  Helper functions should make easy Addition/Removal/Update of group entries
-  and key values.
-  The "status" key value should reflect the PDU status as well as its
-  transaction completion state.
-
-  "status" key possible values:
-	sent -> message has successfully been sent
-	received -> message has successfully been received
-	draft -> message waiting to the be sent
-	read -> a "received" message marked as "read" by the user
-	notify.ind -> a message not yet retrieved
-	retrieve.conf -> a message retrieved but for which the
-	  "Notify-resp.ind" has not been sent.
-
-  META file entry example:
-  [A55BC58DEFGHJ445K9H8E199A674227C9C0C9UDZ]
-  status = received
-
-  Priority: High
-  Complexity: C2
-  Owner: Regis Merlino <regis.merlino@linux.intel.com>
 
 - Add pending/incompleted transactions recovery on mmsd restart.
   In the case of a restart of the mmsd, all the incomplete/pending MMS
