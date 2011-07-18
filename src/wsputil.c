@@ -373,7 +373,7 @@ gboolean wsp_decode_field(const unsigned char *pdu, unsigned int max,
 	return TRUE;
 }
 
-gboolean wsp_get_well_known_content_type(const char* text,
+gboolean wsp_get_well_known_content_type(const char *text,
 							unsigned int *out_val)
 {
 	unsigned int i;
@@ -388,7 +388,7 @@ gboolean wsp_get_well_known_content_type(const char* text,
 	return FALSE;
 }
 
-gboolean wsp_get_well_known_charset(const char* text, unsigned int *out_val)
+gboolean wsp_get_well_known_charset(const char *text, unsigned int *out_val)
 {
 	unsigned int i;
 
