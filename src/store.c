@@ -133,13 +133,10 @@ char *mms_store_get_path(const char *service_id, const char *uuid)
 static char *generate_pdu_pathname(const char *service_id, const char *uuid)
 {
 	char *pathname;
-	const char *homedir;
 
-	homedir = g_get_home_dir();
-	if (homedir == NULL)
+	pathname = mms_store_get_path(service_id, uuid);
+	if (pathname == NULL)
 		return NULL;
-
-	pathname = g_strdup_printf("%s/.mms/%s/%s", homedir, service_id, uuid);
 
 	if (create_dirs(pathname, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
 		mms_error("Failed to create path %s", pathname);
@@ -293,7 +290,7 @@ void mms_store_remove(const char *service_id, const char *uuid)
 	char *pdu_path;
 	char *meta_path;
 
-	pdu_path = generate_pdu_pathname(service_id, uuid);
+	pdu_path = mms_store_get_path(service_id, uuid);
 	if (pdu_path == NULL)
 		return;
 
@@ -339,7 +336,7 @@ static void meta_store_sync(const char *service_id, const char *uuid,
 	char *pdu_path;
 	char *meta_path;
 
-	pdu_path = generate_pdu_pathname(service_id, uuid);
+	pdu_path = mms_store_get_path(service_id, uuid);
 	if (pdu_path == NULL)
 		return;
 
