@@ -116,6 +116,20 @@ static const char *generate_uuid_from_pdu(unsigned char *pdu, unsigned int len)
 	return digest_to_str(digest);
 }
 
+char *mms_store_get_path(const char *service_id, const char *uuid)
+{
+	char *pathname;
+	const char *homedir;
+
+	homedir = g_get_home_dir();
+	if (homedir == NULL)
+		return NULL;
+
+	pathname = g_strdup_printf("%s/.mms/%s/%s", homedir, service_id, uuid);
+
+	return pathname;
+}
+
 static char *generate_pdu_pathname(const char *service_id, const char *uuid)
 {
 	char *pathname;
