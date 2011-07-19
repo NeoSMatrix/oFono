@@ -127,6 +127,15 @@ struct wsp_parameter_iter {
 	unsigned int pos;
 };
 
+#define MAX_TEXT_HEADER_SIZE 4096
+
+struct wsp_text_header_iter {
+	char hdr[MAX_TEXT_HEADER_SIZE + 1];
+	unsigned int pos;
+	const char *key;
+	const char *value;
+};
+
 gboolean wsp_decode_uintvar(const unsigned char *pdu, unsigned int len,
 				unsigned int *out_len, unsigned int *consumed);
 gboolean wsp_decode_integer(const unsigned char *pdu, unsigned int len,
@@ -195,3 +204,9 @@ void wsp_parameter_iter_init(struct wsp_parameter_iter *pi,
 				const unsigned char *pdu, unsigned int len);
 gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
 					struct wsp_parameter *out_param);
+
+gboolean wsp_text_header_iter_init(struct wsp_text_header_iter *iter,
+					const char *hdr);
+gboolean wsp_text_header_iter_param_next(struct wsp_text_header_iter *iter);
+const char *wsp_text_header_iter_get_key(struct wsp_text_header_iter *iter);
+const char *wsp_text_header_iter_get_value(struct wsp_text_header_iter *iter);

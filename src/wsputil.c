@@ -1132,3 +1132,158 @@ gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
 
 	return TRUE;
 }
+
+static const char *decode_token(char *buf, gboolean accept_quotes,
+				unsigned int *out_consumed,
+				char *out_terminator)
+{
+	unsigned int pos = 0;
+	unsigned int start;
+	unsigned int end;
+	char *endp;
+	char terminator = '\0';
+
+	/* Skip leading space */
+	while (buf[pos] == ' ' || buf[pos] == '\t')
+		pos += 1;
+
+	start = pos;
+
+	if (buf[pos] == '"') {
+		if (accept_quotes == FALSE)
+			return NULL;
+
+		pos += 1;
+		start = pos;
+
+		endp = strchr(buf + pos, '"');
+		if (endp == NULL)
+			return NULL;
+
+		pos = endp - buf;
+		end = pos;
+		pos += 1;
+	} else {
+		endp = strpbrk(buf + pos, sep_chars);
+
+		if (endp == NULL)
+			pos = strlen(buf) + 1;
+		else
+			pos = endp - buf;
+
+		end = pos;
+	}
+
+	while (buf[pos] == ' ' || buf[pos] == '\t')
+		pos += 1;
+
+	if (buf[pos] != '\0') {
+		terminator = buf[pos];
+		pos += 1;
+	}
+
+	buf[end] = '\0';
+
+	if (strpbrk(buf + start, ctl_chars) != NULL)
+		return NULL;
+
+	*out_consumed = pos;
+	*out_terminator = terminator;
+
+	return buf + start;
+}
+
+gboolean wsp_text_header_iter_init(struct wsp_text_header_iter *iter,
+					const char *hdr)
+{
+	unsigned int len = strlen(hdr);
+	char terminator;
+	unsigned int consumed;
+	const char *key;
+	const char *value;
+
+	if (len > MAX_TEXT_HEADER_SIZE)
+		return FALSE;
+
+	memcpy(iter->hdr, hdr, len);
+	iter->hdr[len] = '\0';
+	iter->pos = 0;
+	iter->key = NULL;
+	iter->value = NULL;
+
+	key = decode_token(iter->hdr, FALSE, &consumed, &terminator);
+	if (key == NULL)
+		return FALSE;
+
+	if (terminator != ':')
+		return FALSE;
+
+	len = consumed;
+
+	value = decode_token(iter->hdr + len, TRUE, &consumed, &terminator);
+	if (value == NULL)
+		return FALSE;
+
+	if (terminator != '\0' && terminator != ';')
+		return FALSE;
+
+	len += consumed;
+
+	iter->key = key;
+	iter->value = value;
+	iter->pos = len;
+
+	return TRUE;
+}
+
+gboolean wsp_text_header_iter_param_next(struct wsp_text_header_iter *iter)
+{
+	unsigned int pos = iter->pos;
+	char terminator;
+	unsigned int consumed;
+	const char *key;
+	const char *value;
+
+	key = decode_token(iter->hdr + pos, FALSE, &consumed, &terminator);
+	if (key == NULL)
+		return FALSE;
+
+	/* Empty value */
+	if (terminator == ';' || terminator == '\0') {
+		iter->key = key;
+		iter->value = NULL;
+		iter->pos += consumed;
+
+		return TRUE;
+	}
+
+	if (terminator != '=')
+		return FALSE;
+
+	pos += consumed;
+
+	value = decode_token(iter->hdr + pos, TRUE, &consumed, &terminator);
+	if (value == NULL)
+		return FALSE;
+
+	if (terminator != '\0' && terminator != ';')
+		return FALSE;
+
+	pos += consumed;
+
+	iter->key = key;
+	iter->value = value;
+	iter->pos = pos;
+
+	return TRUE;
+}
+
+const char *wsp_text_header_iter_get_key(struct wsp_text_header_iter *iter)
+{
+	return iter->key;
+}
+
+const char *wsp_text_header_iter_get_value(struct wsp_text_header_iter *iter)
+{
+	return iter->value;
+}
