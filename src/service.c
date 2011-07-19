@@ -1160,7 +1160,7 @@ static void result_request_get(guint status, const char *data_path,
 				gpointer user_data)
 {
 	int fd;
-	struct mms_message msg;
+	struct mms_message *msg;
 	struct stat st;
 	unsigned char *pdu;
 	struct mms_service *service = user_data;
@@ -1196,7 +1196,11 @@ static void result_request_get(guint status, const char *data_path,
 	if (uuid == NULL)
 		goto exit;
 
-	if (mms_message_decode(pdu, st.st_size, &msg) == FALSE) {
+	msg = g_try_new0(struct mms_message, 1);
+	if (msg == NULL)
+		goto exit;
+
+	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
 		mms_error("Failed to decode %s", data_path);
 
 		goto error;
@@ -1216,6 +1220,8 @@ static void result_request_get(guint status, const char *data_path,
 
 error:
 	mms_store_remove(service->identity, uuid);
+	mms_message_free(msg);
+	g_free(msg);
 
 exit:
 	munmap(pdu, st.st_size);
