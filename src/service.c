@@ -1166,6 +1166,7 @@ static void result_request_get(guint status, const char *data_path,
 	struct mms_service *service = user_data;
 	const char *uuid;
 	GKeyFile *meta;
+	GSList *item;
 
 	if (status != 200)
 		return;
@@ -1204,6 +1205,13 @@ static void result_request_get(guint status, const char *data_path,
 		mms_error("Failed to decode %s", data_path);
 
 		goto error;
+	}
+
+	for (item = msg->attachments; item != NULL; item = g_slist_next(item)) {
+		struct mms_attachment *attachment;
+
+		attachment = item->data;
+		attachment->file = mms_store_get_path(service->identity, uuid);
 	}
 
 	meta = mms_store_meta_open(service->identity, uuid);
