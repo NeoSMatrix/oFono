@@ -1224,6 +1224,8 @@ static void result_request_get(guint status, const char *data_path,
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
+	mms_message_register(service, msg);
+
 	goto exit;
 
 error:
