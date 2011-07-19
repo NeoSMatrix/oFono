@@ -329,6 +329,51 @@ static void test_decode_push(gconstpointer data)
 				len - nread - headerslen + consumed);
 }
 
+struct text_header_iter_test {
+	const char *header;
+	gboolean success;
+	const char *key;
+	const char *value;
+	const char *dict[];
+};
+
+static const struct text_header_iter_test text_header_iter_1 = {
+	.header = "Content-Type: \"text/html\"; charset=ISO-8859-4; q; bar",
+	.success = TRUE,
+	.key = "Content-Type",
+	.value = "text/html",
+	.dict = { "charset", "ISO-8859-4", "q", NULL, "bar", NULL, NULL, NULL },};
+
+static void test_wsp_text_header_iter(gconstpointer data)
+{
+	const struct text_header_iter_test *test = data;
+	struct wsp_text_header_iter iter;
+	gboolean r;
+	const char *value;
+	int i;
+
+	r = wsp_text_header_iter_init(&iter, test->header);
+	g_assert(r == test->success);
+
+	if (r == FALSE)
+		return;
+
+	g_assert_cmpstr(test->key, ==, wsp_text_header_iter_get_key(&iter));
+	g_assert_cmpstr(test->value, ==, wsp_text_header_iter_get_value(&iter));
+
+	for (i = 0; test->dict[i] != NULL; i++) {
+		r = wsp_text_header_iter_param_next(&iter);
+
+		g_assert(r == TRUE);
+
+		g_assert_cmpstr(test->dict[i++], ==,
+					wsp_text_header_iter_get_key(&iter));
+
+		g_assert_cmpstr(test->dict[i], ==,
+				wsp_text_header_iter_get_value(&iter));
+	}
+}
+
 int main(int argc, char **argv)
 {
 	g_test_init(&argc, &argv, NULL);
@@ -343,6 +388,10 @@ int main(int argc, char **argv)
 				test_decode_push);
 	g_test_add_data_func("/wsputil/Decode CP Push", &push_test_5,
 				test_decode_push);
+
+	g_test_add_data_func("/wsputil/WSP Text Header Iter Test 1",
+				&text_header_iter_1,
+				test_wsp_text_header_iter);
 
 	return g_test_run();
 }
