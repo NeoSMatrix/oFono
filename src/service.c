@@ -558,6 +558,9 @@ static gboolean unregister_message(gpointer key, gpointer value,
 
 static void destroy_message_table(struct mms_service *service)
 {
+	if (service->messages == NULL)
+		return;
+
 	/*
 	 * Each message is first unregistered from dbus, then destroyed from
 	 * the hash table.
@@ -588,8 +591,7 @@ void mms_service_unref(struct mms_service *service)
 
 	g_queue_free(service->request_queue);
 
-	if (service->messages != NULL)
-		destroy_message_table(service);
+	destroy_message_table(service);
 
 	if (service->web != NULL)
 		g_web_unref(service->web);
