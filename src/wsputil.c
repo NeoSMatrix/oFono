@@ -1167,7 +1167,7 @@ static const char *decode_token(char *buf, gboolean accept_quotes,
 		endp = strpbrk(buf + pos, sep_chars);
 
 		if (endp == NULL)
-			pos = strlen(buf) + 1;
+			pos = strlen(buf);
 		else
 			pos = endp - buf;
 
