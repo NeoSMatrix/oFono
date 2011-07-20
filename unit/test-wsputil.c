@@ -349,7 +349,6 @@ static void test_wsp_text_header_iter(gconstpointer data)
 	const struct text_header_iter_test *test = data;
 	struct wsp_text_header_iter iter;
 	gboolean r;
-	const char *value;
 	int i;
 
 	r = wsp_text_header_iter_init(&iter, test->header);
