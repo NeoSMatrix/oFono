@@ -1240,6 +1240,8 @@ static void result_request_get(guint status, const char *data_path,
 		goto error;
 	}
 
+	msg->uuid = g_strdup(uuid);
+
 	for (item = msg->attachments; item != NULL; item = g_slist_next(item)) {
 		struct mms_attachment *attachment;
 
