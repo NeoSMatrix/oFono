@@ -106,6 +106,18 @@ typedef gboolean (*header_encoder)(struct file_buffer *, enum mms_header,
 char *mms_content_type_get_param_value(const char *content_type,
 						const char *param_name)
 {
+	struct wsp_text_header_iter iter;
+
+	if (wsp_text_header_iter_init(&iter, content_type) == FALSE)
+		return NULL;
+
+	while (wsp_text_header_iter_param_next(&iter) == TRUE) {
+		const char *key = wsp_text_header_iter_get_key(&iter);
+
+		if (g_str_equal(key, param_name) == TRUE)
+			return g_strdup(wsp_text_header_iter_get_value(&iter));
+	}
+
 	return NULL;
 }
 
