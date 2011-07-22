@@ -1224,7 +1224,7 @@ static void result_request_get(guint status, const char *data_path,
 	close(fd);
 
 	if (pdu == NULL || pdu == MAP_FAILED)
-		goto exit;
+		return;
 
 	uuid = mms_store_file(service->identity, data_path);
 	if (uuid == NULL)
