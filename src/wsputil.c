@@ -1147,6 +1147,9 @@ static const char *decode_token(char *buf, gboolean accept_quotes,
 	while (buf[pos] == ' ' || buf[pos] == '\t')
 		pos += 1;
 
+	if (buf[pos] == '\0')
+		return NULL;
+
 	start = pos;
 
 	if (buf[pos] == '"') {
