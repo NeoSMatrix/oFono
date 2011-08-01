@@ -30,6 +30,7 @@ enum mms_message_type {
 };
 
 enum mms_message_status {
+	MMS_MESSAGE_STATUS_DOWNLOADED,
 	MMS_MESSAGE_STATUS_RECEIVED,
 	MMS_MESSAGE_STATUS_READ,
 	MMS_MESSAGE_STATUS_SENT,
