@@ -48,6 +48,13 @@
 
 #define uninitialized_var(x) x = x
 
+static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
+				"\x0B\x0C\x0D\x0E\x0F\x10\x11\x12\x13\x14"
+				"\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E"
+				"\x1F\x7F";
+
+static const char *sep_chars = "()<>@,;:\\\"/[]?={} \t";
+
 typedef void (*mms_request_result_cb_t) (guint status, const char *data_path,
 						gpointer user_data);
 
@@ -233,6 +240,33 @@ static gboolean valid_number_format(const char *number)
 	return TRUE;
 }
 
+static gboolean valid_content_type(const char *ct)
+{
+	if (strlen(ct) == 0)
+		return FALSE;
+
+	if (strpbrk(ct, ctl_chars) != NULL)
+		return FALSE;
+
+	if (isspace(*ct) == TRUE)
+		return FALSE;
+
+	ct = strpbrk(ct, sep_chars);
+	if (ct == NULL)
+		return FALSE;
+
+	if (ct[0] != '/')
+		return FALSE;
+
+	ct += 1;
+
+	ct = strpbrk(ct, sep_chars);
+	if (ct == NULL)
+		return TRUE;
+
+	return FALSE;
+}
+
 static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 						struct mms_message *msg)
 {
@@ -304,12 +338,26 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 
 		dbus_message_iter_get_basic(&entry, &filename);
 
+		if (valid_content_type(ct) == FALSE)
+			return FALSE;
+
 		attach = g_try_new0(struct mms_attachment, 1);
 		if (attach == NULL)
 			return FALSE;
 
 		attach->content_id = g_strdup(id);
-		attach->content_type = g_strdup(ct);
+
+		if (g_str_has_prefix(ct, "text/") == TRUE)
+			attach->content_type = g_strconcat("Content-Type: \"",
+							ct,
+							"\";charset=utf-8",
+							NULL);
+		else
+			attach->content_type = g_strconcat("Content-Type: \"",
+							ct,
+							"\"",
+							NULL);
+
 		attach->file = g_strdup(filename);
 
 		msg->attachments = g_slist_append(msg->attachments, attach);
