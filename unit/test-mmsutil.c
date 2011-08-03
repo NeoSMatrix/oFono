@@ -634,6 +634,23 @@ static const char mms_m_retrieve_conf_14[] = "./unit/rc-mms-1-3-con-282.mms";
 static const char mms_m_retrieve_conf_15[] = "./unit/rc-mms-1-3-con-281.mms";
 
 /*
+ * MMS M-Send.Req PDU 1
+ * This PDU shows the decoding of a M-Send.Req PDU with a content-type
+ * value "application/vnd.wap.multipart.mixed" and below content:
+ * Overall message size: 90
+ * MMS message type: send-req
+ * MMS transaction id: 000000000001
+ * MMS version: 1.0
+ * To: +33612345678/TYPE=PLMN
+ * Attachment:
+ *	Offset: 75
+ *	Length: 15
+ *	Content-type: text/plain;charset=utf-8
+ *	Content-id: <Generic_Text.txt>
+ */
+static const char mms_m_send_req_1[] = "./unit/sr-mms-mixed.mms";
+
+/*
  * MMS M-Send.Conf PDU 1
  * This PDU shows the decoding of a M-Send.Conf PDU with an accepted "response
  * status" and a below content:
@@ -752,6 +769,10 @@ static const struct mms_test mms_m_retrieve_conf_test_14 = {
 
 static const struct mms_test mms_m_retrieve_conf_test_15 = {
 	.pathname = mms_m_retrieve_conf_15,
+};
+
+static const struct mms_test mms_m_send_req_dec_test_1 = {
+	.pathname = mms_m_send_req_1,
 };
 
 static const struct mms_test mms_m_send_conf_test_1 = {
@@ -1003,6 +1024,9 @@ int main(int argc, char **argv)
 				&mms_m_retrieve_conf_test_14, test_decode_mms);
 	g_test_add_data_func("/mmsutil/Decode MMS M-Retrieve.Conf PDU 15",
 				&mms_m_retrieve_conf_test_15, test_decode_mms);
+
+	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Req PDU 1",
+				&mms_m_send_req_dec_test_1, test_decode_mms);
 
 	g_test_add_data_func("/mmsutil/Decode MMS M-Send.Conf PDU 1",
 				&mms_m_send_conf_test_1, test_decode_mms);
