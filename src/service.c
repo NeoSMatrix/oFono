@@ -509,6 +509,47 @@ close:
 	close(fd);
 }
 
+static void append_message(const char *path, struct mms_message *msg,
+							DBusMessageIter *iter);
+
+static void append_message_entry(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	DBusMessageIter entry;
+	char *path = key;
+	struct mms_message *msg = value;
+	DBusMessageIter *iter = user_data;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
+
+	append_message(path, msg, &entry);
+
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+static DBusMessage *get_messages(DBusConnection *conn,
+					DBusMessage *dbus_msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	struct mms_service *service = data;
+
+	reply = dbus_message_new_method_return(dbus_msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+							"(oa{sv})", &array);
+
+	g_hash_table_foreach(service->messages, append_message_entry, &array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
@@ -588,6 +629,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 static GDBusMethodTable service_methods[] = {
 	{ "SendMessage", "assa(sss)", "o", send_message },
+	{ "GetMessages", "", "a(oa{sv})", get_messages },
 	{ }
 };
 
