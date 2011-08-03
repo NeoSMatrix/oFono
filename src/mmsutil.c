@@ -928,6 +928,35 @@ static gboolean decode_send_conf(struct wsp_header_iter *iter,
 				MMS_HEADER_INVALID);
 }
 
+static gboolean decode_send_req(struct wsp_header_iter *iter,
+						struct mms_message *out)
+{
+	if (mms_parse_headers(iter, MMS_HEADER_TRANSACTION_ID,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->transaction_id,
+				MMS_HEADER_MMS_VERSION,
+				HEADER_FLAG_MANDATORY | HEADER_FLAG_PRESET_POS,
+				&out->version,
+				MMS_HEADER_TO,
+				HEADER_FLAG_ALLOW_MULTI, &out->sr.to,
+				MMS_HEADER_INVALID) == FALSE)
+		return FALSE;
+
+	if (wsp_header_iter_at_end(iter) == TRUE)
+		return TRUE;
+
+	if (wsp_header_iter_is_multipart(iter) == FALSE)
+		return FALSE;
+
+	if (mms_parse_attachments(iter, out) == FALSE)
+		return FALSE;
+
+	if (wsp_header_iter_at_end(iter) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
 #define CHECK_WELL_KNOWN_HDR(hdr)			\
 	if (wsp_header_iter_next(&iter) == FALSE)	\
 		return FALSE;				\
@@ -968,7 +997,7 @@ gboolean mms_message_decode(const unsigned char *pdu,
 
 	switch (out->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
-		return FALSE;
+		return decode_send_req(&iter, out);
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 		return decode_send_conf(&iter, out);
 	case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
