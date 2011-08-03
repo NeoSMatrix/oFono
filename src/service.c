@@ -1078,25 +1078,14 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 		append_msg_recipients(dict, msg);
 }
 
-static void emit_message_added(const struct mms_service *service,
-						struct mms_message *msg)
+static void append_message(const char *path, struct mms_message *msg,
+							DBusMessageIter *iter)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter, dict;
+	DBusMessageIter dict;
 
-	DBG("message %p", msg);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	signal = dbus_message_new_signal(service->path, MMS_SERVICE_INTERFACE,
-							"MessageAdded");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-							&msg->path);
-
-	mms_dbus_dict_open(&iter, &dict);
+	mms_dbus_dict_open(iter, &dict);
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
@@ -1120,7 +1109,25 @@ static void emit_message_added(const struct mms_service *service,
 	if (msg->attachments != NULL)
 		append_msg_attachments(&dict, msg);
 
-	mms_dbus_dict_close(&iter, &dict);
+	mms_dbus_dict_close(iter, &dict);
+}
+
+static void emit_message_added(const struct mms_service *service,
+						struct mms_message *msg)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	DBG("message %p", msg);
+
+	signal = dbus_message_new_signal(service->path, MMS_SERVICE_INTERFACE,
+							"MessageAdded");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	append_message(msg->path, msg, &iter);
 
 	g_dbus_send_message(connection, signal);
 }
