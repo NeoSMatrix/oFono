@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SessionBus()
+
+manager = dbus.Interface(bus.get_object('org.ofono.mms', '/org/ofono/mms'),
+					'org.ofono.mms.Manager')
+
+services = manager.GetServices()
+path = services[0][0]
+
+service = dbus.Interface(bus.get_object('org.ofono.mms', path),
+						'org.ofono.mms.Service')
+
+messages = service.GetMessages()
+
+for entry in messages:
+	path = entry[0]
+	properties = entry[1]
+
+	print "[ %s ]" % (path)
+
+	for key in properties.keys():
+		val = str(properties[key])
+		print "    %s = %s" % (key, val)
+
+	print

@@ -51,7 +51,7 @@ INCLUDES = -I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/gdbus
 CLEANFILES = src/builtin.h
 
 test_scripts = test/monitor-mms test/get-services test/send-message \
-		test/delete-message test/mark-message-read
+		test/delete-message test/mark-message-read test/get-messages
 
 doc_files = doc/architecture.txt doc/consumer.txt doc/manager-api.txt \
 				doc/service-api.txt doc/message-api.txt \
