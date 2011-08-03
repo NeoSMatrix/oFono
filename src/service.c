@@ -46,6 +46,14 @@
 #define CHUNK_SIZE 2048                 /* 2 Kib */
 #define DEFAULT_CONTENT_TYPE "application/vnd.wap.mms-message"
 
+#define CT_MUTLIPART "Content-Type: \"application/vnd.wap.multipart."
+#define CT_TYPE ";type=\"application/smil\""
+#define CT_START ";start=\"<SMIL>\""
+#define CT_MULTIPART_RELATED CT_MUTLIPART "related\"" CT_TYPE CT_START
+#define CT_MULTIPART_MIXED CT_MUTLIPART "mixed\""
+#define CONTENT_ID_SMIL "SMIL"
+#define CONTENT_TYPE_APP_SMIL "Content-Type: \"application/smil\";charset=utf-8"
+
 #define uninitialized_var(x) x = x
 
 static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
@@ -315,6 +323,8 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 		const char *id;
 		const char *ct;
 		const char *filename;
+		int fd;
+		struct stat st;
 		struct mms_attachment *attach;
 
 		dbus_message_iter_recurse(&attachments, &entry);
@@ -344,6 +354,30 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 		attach = g_try_new0(struct mms_attachment, 1);
 		if (attach == NULL)
 			return FALSE;
+
+		fd = open(filename, O_RDONLY);
+		if (fd < 0) {
+			g_free(attach);
+			return FALSE;
+		}
+
+		if (fstat(fd, &st) < 0) {
+			close(fd);
+			g_free(attach);
+			return FALSE;
+		}
+
+		attach->length = st.st_size;
+
+		attach->data = mmap(NULL, attach->length, PROT_READ, MAP_SHARED,
+					fd, 0);
+
+		close(fd);
+
+		if (attach->data == MAP_FAILED) {
+			g_free(attach);
+			return FALSE;
+		}
 
 		attach->content_id = g_strdup(id);
 
@@ -390,7 +424,27 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 		return FALSE;
 
 	dbus_message_iter_get_basic(&top_iter, &smil);
-	msg->sr.smil = g_strdup(smil);
+
+	if (smil[0] != '\0') {
+		struct mms_attachment *attach;
+
+		attach = g_try_new0(struct mms_attachment, 1);
+		if (attach == NULL)
+			return FALSE;
+
+		attach->content_id = g_strdup(CONTENT_ID_SMIL);
+		attach->content_type = g_strdup(CONTENT_TYPE_APP_SMIL);
+		attach->file = g_strdup("");
+		attach->length = strlen(smil) + 1;
+		attach->data = g_memdup(smil, attach->length);
+
+		msg->attachments = g_slist_append(msg->attachments, attach);
+
+		msg->sr.content_type = g_strdup(CT_MULTIPART_RELATED);
+	} else
+		msg->sr.content_type = g_strdup(CT_MULTIPART_MIXED);
+
+	msg->sr.smil = NULL;
 
 	if (!dbus_message_iter_next(&top_iter))
 		return FALSE;
@@ -601,6 +655,30 @@ static DBusMessage *get_messages(DBusConnection *conn,
 	return reply;
 }
 
+static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
+{
+	if (g_str_has_prefix(part->content_type, "application/smil"))
+		return TRUE;
+
+	return FALSE;
+}
+
+static void release_data(gpointer data, gpointer user_data)
+{
+	struct mms_attachment *attach = data;
+
+	if (mms_attachment_is_smil(attach))
+		g_free(attach->data);
+	else
+		munmap(attach->data, attach->length);
+}
+
+static void release_attachement_data(GSList *attach)
+{
+	if (attach != NULL)
+		g_slist_foreach(attach, release_data, NULL);
+}
+
 static DBusMessage *send_message(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
@@ -621,6 +699,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 	if (send_message_get_args(dbus_msg, msg) == FALSE) {
 		mms_debug("Invalid arguments");
 
+		release_attachement_data(msg->attachments);
+
 		mms_message_free(msg);
 		g_free(msg);
 
@@ -628,15 +708,20 @@ static DBusMessage *send_message(DBusConnection *conn,
 	}
 
 	msg->transaction_id = create_transaction_id();
-	if (msg->transaction_id == NULL)
+	if (msg->transaction_id == NULL) {
+		release_attachement_data(msg->attachments);
 		return __mms_error_trans_failure(dbus_msg);
+	}
 
 	request = create_request(MMS_REQUEST_TYPE_POST,
 				 result_request_post, NULL, service);
-	if (request == NULL)
+	if (request == NULL) {
+		release_attachement_data(msg->attachments);
 		return __mms_error_trans_failure(dbus_msg);
+	}
 
 	if (mms_message_encode(msg, request->fd) == FALSE) {
+		release_attachement_data(msg->attachments);
 		mms_request_destroy(request);
 		return __mms_error_trans_failure(dbus_msg);
 	}
@@ -647,6 +732,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 					    request->data_path));
 
 	if (mms_message_register(service, msg) < 0) {
+		release_attachement_data(msg->attachments);
 		mms_message_free(msg);
 		g_free(msg);
 
@@ -654,6 +740,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 		return __mms_error_trans_failure(dbus_msg);
 	}
+
+	release_attachement_data(msg->attachments);
 
 	g_free(request->data_path);
 
@@ -899,14 +987,6 @@ int mms_service_unregister(struct mms_service *service)
 	service->path = NULL;
 
 	return 0;
-}
-
-static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
-{
-	if (g_str_has_prefix(part->content_type, "application/smil"))
-		return TRUE;
-
-	return FALSE;
 }
 
 static const char *time_to_str(const time_t *t)
