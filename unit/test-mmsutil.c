@@ -138,6 +138,13 @@ static void dump_send_conf(struct mms_message *msg)
 	g_print("Msg-Id: %s\n", msg->sc.msgid);
 }
 
+static void dump_send_req(struct mms_message *msg)
+{
+	g_print("To: %s\n", msg->sr.to);
+
+	g_slist_foreach(msg->attachments, dump_attachment, NULL);
+}
+
 static gboolean check_encoded_msg(const char *filename,
 						const unsigned char *msg_pdu)
 {
@@ -823,6 +830,9 @@ static void test_decode_mms(gconstpointer data)
 			break;
 		case MMS_MESSAGE_TYPE_SEND_CONF:
 			dump_send_conf(&msg);
+			break;
+		case MMS_MESSAGE_TYPE_SEND_REQ:
+			dump_send_req(&msg);
 			break;
 		default:
 			break;
