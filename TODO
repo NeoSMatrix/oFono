@@ -119,13 +119,6 @@ D-Bus API
   Complexity: C2
   Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
 
-- Add the "org.ofono.mms.Service" interface "GetMessages" method
-  implementation.
-  The D-Bus Message API documentation is available under /doc/service-api.txt.
-
-  Priority: Medium
-  Complexity: C2
-
 - Add the "org.ofono.mms.Service" interface "GetConversation" method 
   implementation.
   The D-Bus Message API documentation is available under /doc/service-api.txt.
