@@ -398,8 +398,6 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 							"\"",
 							NULL);
 
-		attach->file = g_strdup(filename);
-
 		msg->attachments = g_slist_append(msg->attachments, attach);
 
 		dbus_message_iter_next(&attachments);
@@ -440,7 +438,6 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 
 		attach->content_id = g_strdup(CONTENT_ID_SMIL);
 		attach->content_type = g_strdup(CONTENT_TYPE_APP_SMIL);
-		attach->file = g_strdup("");
 		attach->length = strlen(smil) + 1;
 		attach->data = g_memdup(smil, attach->length);
 
@@ -1005,7 +1002,8 @@ static const char *time_to_str(const time_t *t)
 }
 
 static void append_attachment_properties(struct mms_attachment *part,
-			DBusMessageIter *dict, DBusMessageIter *part_array)
+			DBusMessageIter *dict, const char *path,
+			DBusMessageIter *part_array)
 {
 	DBusMessageIter entry;
 	dbus_uint64_t val;
@@ -1018,7 +1016,7 @@ static void append_attachment_properties(struct mms_attachment *part,
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
 							&part->content_type);
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
-							&part->file);
+							&path);
 	val = part->offset;
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT64, &val);
 	val = part->length;
@@ -1027,7 +1025,7 @@ static void append_attachment_properties(struct mms_attachment *part,
 	dbus_message_iter_close_container(part_array, &entry);
 }
 
-static void append_smil(DBusMessageIter *dict,
+static void append_smil(DBusMessageIter *dict, const char *path,
 					const struct mms_attachment *part)
 {
 	const char *to_codeset = "utf-8";
@@ -1037,9 +1035,9 @@ static void append_smil(DBusMessageIter *dict,
 	unsigned char *data;
 	char *smil;
 
-	fd = open(part->file, O_RDONLY);
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		mms_error("Failed to open %s\n", part->file);
+		mms_error("Failed to open %s\n", path);
 		return;
 	}
 
@@ -1077,7 +1075,7 @@ out:
 	close(fd);
 }
 
-static void append_msg_attachments(DBusMessageIter *dict,
+static void append_msg_attachments(DBusMessageIter *dict, const char *path,
 					struct mms_message *msg)
 {
 	const char *dict_entry = "Attachments";
@@ -1104,7 +1102,8 @@ static void append_msg_attachments(DBusMessageIter *dict,
 		if (mms_attachment_is_smil(part->data))
 			smil = part->data;
 		else
-			append_attachment_properties(part->data, dict, &array);
+			append_attachment_properties(part->data, dict, path,
+									&array);
 	}
 
 	dbus_message_iter_close_container(&variant, &array);
@@ -1118,7 +1117,7 @@ static void append_msg_attachments(DBusMessageIter *dict,
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
-		append_smil(dict, smil);
+		append_smil(dict, path, smil);
 		return;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 		return;
@@ -1127,7 +1126,7 @@ static void append_msg_attachments(DBusMessageIter *dict,
 	case MMS_MESSAGE_TYPE_NOTIFYRESP_IND:
 		return;
 	case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
-		append_smil(dict, smil);
+		append_smil(dict, path, smil);
 		break;
 	case MMS_MESSAGE_TYPE_ACKNOWLEDGE_IND:
 		return;
@@ -1279,8 +1278,12 @@ static void append_message(const char *path, struct mms_message *msg,
 		break;
 	}
 
-	if (msg->attachments != NULL)
-		append_msg_attachments(&dict, msg);
+	if (msg->attachments != NULL) {
+		char *pdu_path = g_strdup_printf("%s/.mms/%s", g_get_home_dir(),
+							path);
+		append_msg_attachments(&dict, pdu_path, msg);
+		g_free(pdu_path);
+	}
 
 	mms_dbus_dict_close(iter, &dict);
 }
@@ -1447,7 +1450,6 @@ static void result_request_get(guint status, const char *data_path,
 	struct mms_service *service = user_data;
 	const char *uuid;
 	GKeyFile *meta;
-	GSList *item;
 
 	if (status != 200)
 		return;
@@ -1489,13 +1491,6 @@ static void result_request_get(guint status, const char *data_path,
 	}
 
 	msg->uuid = g_strdup(uuid);
-
-	for (item = msg->attachments; item != NULL; item = g_slist_next(item)) {
-		struct mms_attachment *attachment;
-
-		attachment = item->data;
-		attachment->file = mms_store_get_path(service->identity, uuid);
-	}
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)

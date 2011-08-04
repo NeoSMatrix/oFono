@@ -806,7 +806,6 @@ static void free_attachment(gpointer data, gpointer user_data)
 {
 	struct mms_attachment *attach = data;
 
-	g_free(attach->file);
 	g_free(attach->content_type);
 	g_free(attach->content_id);
 

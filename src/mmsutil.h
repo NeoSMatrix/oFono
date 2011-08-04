@@ -117,7 +117,6 @@ struct mms_notification_resp_ind {
 };
 
 struct mms_attachment {
-	char *file;
 	unsigned char *data;
 	ssize_t offset;
 	ssize_t length;

@@ -106,7 +106,6 @@ static void dump_attachment(gpointer data, gpointer user_data)
 	struct mms_attachment *attach = data;
 
 	g_print("Attachment:\n");
-	g_print("\tFile: %s\n", attach->file);
 	g_print("\tOffset: %zd\n", attach->offset);
 	g_print("\tLength: %zd\n", attach->length);
 	g_print("\tContent-type: %s\n", attach->content_type);
