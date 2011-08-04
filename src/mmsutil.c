@@ -1029,7 +1029,6 @@ void mms_message_free(struct mms_message *msg)
 	case MMS_MESSAGE_TYPE_SEND_REQ:
 		g_free(msg->sr.to);
 		g_free(msg->sr.content_type);
-		g_free(msg->sr.smil);
 		break;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 		g_free(msg->sc.msgid);

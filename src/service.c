@@ -450,8 +450,6 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 	} else
 		msg->sr.content_type = g_strdup(CT_MULTIPART_MIXED);
 
-	msg->sr.smil = NULL;
-
 	if (!dbus_message_iter_next(&top_iter))
 		return FALSE;
 
@@ -1120,6 +1118,7 @@ static void append_msg_attachments(DBusMessageIter *dict,
 
 	switch (msg->type) {
 	case MMS_MESSAGE_TYPE_SEND_REQ:
+		append_smil(dict, smil);
 		return;
 	case MMS_MESSAGE_TYPE_SEND_CONF:
 		return;
@@ -1247,11 +1246,6 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 
 	mms_dbus_dict_append_basic(dict, "Date",
 					DBUS_TYPE_STRING,  &date);
-
-	/* Smil available from message struct */
-	if (msg->sr.smil != NULL)
-		mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING,
-						&msg->sr.smil);
 
 	if (msg->sr.to != NULL)
 		append_msg_recipients(dict, msg);
