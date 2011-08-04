@@ -54,6 +54,8 @@
 #define CONTENT_ID_SMIL "SMIL"
 #define CONTENT_TYPE_APP_SMIL "Content-Type: \"application/smil\";charset=utf-8"
 
+#define MAX_ATTACHMENTS_NUMBER 25
+
 #define uninitialized_var(x) x = x
 
 static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
@@ -314,6 +316,7 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 						struct mms_message *msg)
 {
 	DBusMessageIter attachments;
+	unsigned int attach_num = 0;
 
 	dbus_message_iter_recurse(top_iter, &attachments);
 
@@ -326,6 +329,9 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 		int fd;
 		struct stat st;
 		struct mms_attachment *attach;
+
+		if (++attach_num > MAX_ATTACHMENTS_NUMBER)
+			return FALSE;
 
 		dbus_message_iter_recurse(&attachments, &entry);
 
