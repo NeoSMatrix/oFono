@@ -34,6 +34,13 @@
 #include "mmsutil.h"
 
 #define MAX_ENC_VALUE_BYTES 6
+
+#ifdef TEMP_FAILURE_RETRY
+#define TFR TEMP_FAILURE_RETRY
+#else
+#define TFR
+#endif
+
 #define uninitialized_var(x) x = x
 
 enum header_flag {
@@ -1119,6 +1126,26 @@ static void *fb_request_field(struct file_buffer *fb, unsigned char token,
 	return ptr + 1;
 }
 
+static gboolean fb_copy(struct file_buffer *fb, const void *buf, unsigned int c)
+{
+	unsigned int written;
+	ssize_t len;
+
+	if (fb_flush(fb) == FALSE)
+		return FALSE;
+
+	len = TFR(write(fb->fd, buf, c));
+	if (len < 0)
+		return FALSE;
+
+	written = len;
+
+	if (written != c)
+		return FALSE;
+
+	return TRUE;
+}
+
 static gboolean fb_put_value_length(struct file_buffer *fb, unsigned int val)
 {
 	unsigned int count;
@@ -1204,6 +1231,28 @@ static gboolean encode_text(struct file_buffer *fb,
 		return FALSE;
 
 	strcpy(ptr, *text);
+
+	return TRUE;
+}
+
+static gboolean encode_quoted_string(struct file_buffer *fb,
+				enum mms_header header, void *user)
+{
+	char *ptr;
+	char **text = user;
+	unsigned int len;
+
+	len = strlen(*text) + 1;
+
+	ptr = fb_request_field(fb, header, len + 3);
+	if (ptr == NULL)
+		return FALSE;
+
+	ptr[0] = '"';
+	ptr[1] = '<';
+	strcpy(ptr + 2, *text);
+	ptr[len + 1] = '>';
+	ptr[len + 2] = '\0';
 
 	return TRUE;
 }
@@ -1380,6 +1429,131 @@ static header_encoder encoder_for_type(enum mms_header header)
 	return NULL;
 }
 
+static gboolean mms_encode_send_req_part_header(struct mms_attachment *part,
+						struct file_buffer *fb)
+{
+	char *ptr;
+	unsigned int len;
+	unsigned int ct;
+	unsigned int ct_len;
+	unsigned int cs_len;
+	const char *ct_str;
+	const char *uninitialized_var(cs_str);
+	unsigned int ctp_len;
+	unsigned int cid_len;
+	unsigned char ctp_val[MAX_ENC_VALUE_BYTES];
+	unsigned char cs_val[MAX_ENC_VALUE_BYTES];
+	unsigned int cs;
+	struct wsp_text_header_iter iter;
+
+	/*
+	 * Compute Headers length: content-type [+ params] [+ content-id]
+	 * ex. : "Content-Type:text/plain; charset=us-ascii"
+	 */
+	if (wsp_text_header_iter_init(&iter, part->content_type) == FALSE)
+		return FALSE;
+
+	if (g_ascii_strcasecmp("Content-Type",
+				wsp_text_header_iter_get_key(&iter)) != 0)
+		return FALSE;
+
+	ct_str = wsp_text_header_iter_get_value(&iter);
+
+	if (wsp_get_well_known_content_type(ct_str, &ct) == TRUE)
+		ct_len = 1;
+	else
+		ct_len = strlen(ct_str) + 1;
+
+	len = ct_len;
+
+	cs_len = 0;
+
+	while (wsp_text_header_iter_param_next(&iter) == TRUE) {
+		const char *key = wsp_text_header_iter_get_key(&iter);
+
+		if (g_ascii_strcasecmp("charset", key) == 0) {
+			cs_str = wsp_text_header_iter_get_value(&iter);
+			if (cs_str == NULL)
+				return FALSE;
+
+			len += 1;
+
+			if (wsp_get_well_known_charset(cs_str, &cs) == FALSE)
+				return FALSE;
+
+			if (wsp_encode_integer(cs, cs_val, MAX_ENC_VALUE_BYTES,
+							&cs_len) == FALSE)
+				return FALSE;
+
+			len += cs_len;
+		}
+	}
+
+	if (wsp_encode_value_length(len, ctp_val, MAX_ENC_VALUE_BYTES,
+							&ctp_len) == FALSE)
+		return FALSE;
+
+	len += ctp_len;
+
+	/* Compute content-id header length : token + (Quoted String) */
+	if (part->content_id != NULL) {
+		cid_len = 1 + strlen(part->content_id) + 3 + 1;
+		len += cid_len;
+	} else
+		cid_len = 0;
+
+	/* Encode total headers length */
+	if (fb_put_uintvar(fb, len) == FALSE)
+		return FALSE;
+
+	/* Encode data length */
+	if (fb_put_uintvar(fb, part->length) == FALSE)
+		return FALSE;
+
+	/* Encode content-type */
+	ptr = fb_request(fb, ctp_len);
+	if (ptr == NULL)
+		return FALSE;
+
+	memcpy(ptr, &ctp_val, ctp_len);
+
+	ptr = fb_request(fb, ct_len);
+	if (ptr == NULL)
+		return FALSE;
+
+	if (ct_len == 1)
+		ptr[0] = ct | 0x80;
+	else
+		strcpy(ptr, ct_str);
+
+	/* Encode "charset" param */
+	if (cs_len > 0) {
+		ptr = fb_request_field(fb, WSP_PARAMETER_TYPE_CHARSET, cs_len);
+		if (ptr == NULL)
+			return FALSE;
+
+		memcpy(ptr, &cs_val, cs_len);
+	}
+
+	/* Encode content-id */
+	if (part->content_id != NULL) {
+		if (encode_quoted_string(fb, MMS_PART_HEADER_CONTENT_ID,
+						&part->content_id) == FALSE)
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+static gboolean mms_encode_send_req_part(struct mms_attachment *part,
+						struct file_buffer *fb)
+{
+	if (mms_encode_send_req_part_header(part, fb) == FALSE)
+		return FALSE;
+
+	return fb_copy(fb, part->data, part->length);
+}
+
 static gboolean mms_encode_headers(struct file_buffer *fb,
 					enum mms_header orig_header, ...)
 {
@@ -1426,6 +1600,7 @@ static gboolean mms_encode_send_req(struct mms_message *msg,
 							struct file_buffer *fb)
 {
 	const char *empty_from = "";
+	GSList *item;
 
 	if (mms_encode_headers(fb, MMS_HEADER_MESSAGE_TYPE, &msg->type,
 				MMS_HEADER_TRANSACTION_ID, &msg->transaction_id,
@@ -1441,6 +1616,11 @@ static gboolean mms_encode_send_req(struct mms_message *msg,
 
 	if (fb_put_uintvar(fb, g_slist_length(msg->attachments)) == FALSE)
 		return FALSE;
+
+	for (item = msg->attachments; item != NULL; item = g_slist_next(item)) {
+		if (mms_encode_send_req_part(item->data, fb) == FALSE)
+			return FALSE;
+	}
 
 done:
 	return fb_flush(fb);
