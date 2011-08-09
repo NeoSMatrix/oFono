@@ -518,6 +518,8 @@ static gboolean bearer_setup_timeout(gpointer user_data)
 }
 
 static void process_request_queue(struct mms_service *service);
+static void emit_message_added(const struct mms_service *service,
+						struct mms_message *msg);
 
 static void activate_bearer(struct mms_service *service)
 {
@@ -603,6 +605,7 @@ static void result_request_post(guint status, const char *data_path,
 	msg->uuid = g_strdup(uuid);
 
 	mms_message_register(service, msg);
+	emit_message_added(service, msg);
 
 unmap:
 	munmap(pdu, st.st_size);
@@ -741,6 +744,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 		return __mms_error_trans_failure(dbus_msg);
 	}
+
+	emit_message_added(service, msg);
 
 	release_attachement_data(msg->attachments);
 
@@ -1330,8 +1335,6 @@ int mms_message_register(struct mms_service *service,
 
 	DBG("message registered %s", msg->path);
 
-	emit_message_added(service, msg);
-
 	return 0;
 }
 
@@ -1503,6 +1506,7 @@ static void result_request_get(guint status, const char *data_path,
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
 	mms_message_register(service, msg);
+	emit_message_added(service, msg);
 
 	goto exit;
 
