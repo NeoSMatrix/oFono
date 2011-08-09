@@ -931,6 +931,190 @@ static void emit_service_removed(struct mms_service *service)
 				&service->path, DBUS_TYPE_INVALID);
 }
 
+static gboolean load_message_from_store(const char *service_id,
+				const char *uuid, struct mms_message *msg)
+{
+	int fd;
+	struct stat st;
+	unsigned char *pdu;
+	GKeyFile *meta;
+	char *state = NULL;
+	gboolean read_status;
+	char *data_path = NULL;
+	gboolean success = FALSE;
+
+	meta = mms_store_meta_open(service_id, uuid);
+	if (meta == NULL)
+		return FALSE;
+
+	state = g_key_file_get_string(meta, "info", "state", NULL);
+	if (state == NULL)
+		goto out;
+
+	read_status = g_key_file_get_boolean(meta, "info", "read", NULL);
+
+	data_path = mms_store_get_path(service_id, uuid);
+	if (data_path == NULL)
+		goto out;
+
+	fd = open(data_path, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s", data_path);
+		goto out;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		close(fd);
+		goto out;
+	}
+
+	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+
+	close(fd);
+
+	if (pdu == NULL || pdu == MAP_FAILED)
+		goto out;
+
+	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
+		mms_error("Failed to decode %s", data_path);
+		munmap(pdu, st.st_size);
+		goto out;
+	}
+
+	munmap(pdu, st.st_size);
+
+	msg->uuid = g_strdup(uuid);
+
+	if (strcmp(state, "received") == 0
+			&& msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF) {
+		if (read_status == TRUE)
+			msg->rc.status = MMS_MESSAGE_STATUS_READ;
+		else
+			msg->rc.status = MMS_MESSAGE_STATUS_RECEIVED;
+	} else if (strcmp(state, "downloaded") == 0
+			&& msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF)
+		msg->rc.status = MMS_MESSAGE_STATUS_DOWNLOADED;
+	else if (strcmp(state, "sent") == 0
+			&& msg->type == MMS_MESSAGE_TYPE_SEND_REQ)
+		msg->sr.status = MMS_MESSAGE_STATUS_SENT;
+	else if (strcmp(state, "draft") == 0
+			&& msg->type == MMS_MESSAGE_TYPE_SEND_REQ)
+		msg->sr.status = MMS_MESSAGE_STATUS_DRAFT;
+	else if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
+		goto out;
+
+	success = TRUE;
+
+out:
+	g_free(state);
+	g_free(data_path);
+
+	mms_store_meta_close(service_id, uuid, meta, FALSE);
+
+	return success;
+}
+
+static void result_request_get(guint status, const char *data_path,
+				gpointer user_data);
+
+static void process_message_on_start(struct mms_service *service,
+							const char *uuid)
+{
+	struct mms_message *msg;
+	struct mms_request *request;
+	const char *service_id = service->identity;
+
+	msg = g_try_new0(struct mms_message, 1);
+	if (msg == NULL)
+		return;
+
+	if (load_message_from_store(service_id, uuid, msg) == FALSE) {
+		free_message(msg);
+		return;
+	}
+
+	if (msg->type == MMS_MESSAGE_TYPE_NOTIFICATION_IND) {
+		char *location = g_strdup(msg->ni.location);
+
+		free_message(msg);
+
+		request = create_request(MMS_REQUEST_TYPE_GET,
+					 result_request_get, location, service);
+		if (request == NULL) {
+			g_free(location);
+			return;
+		}
+	} else if (msg->type == MMS_MESSAGE_TYPE_SEND_REQ) {
+		if (msg->sr.status == MMS_MESSAGE_STATUS_DRAFT) {
+			request = create_request(MMS_REQUEST_TYPE_POST,
+				result_request_post, NULL, service);
+			if (request == NULL)
+				goto register_sr;
+
+			request->data_path = mms_store_get_path(service_id,
+									uuid);
+			request->fd = open(request->data_path, O_RDONLY);
+		} else
+			request = NULL;
+register_sr:
+		mms_message_register(service, msg);
+	} else if (msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF) {
+		if (msg->rc.status == MMS_MESSAGE_STATUS_DOWNLOADED) {
+			/* TODO - Create http request */
+			request = NULL;
+
+			free_message(msg);
+		} else {
+			request = NULL;
+			mms_message_register(service, msg);
+		}
+	} else
+		request = NULL;
+
+	if (request != NULL) {
+		g_queue_push_tail(service->request_queue, request);
+		activate_bearer(service);
+	}
+}
+
+static void mms_service_foreach_messages(struct mms_service *service)
+{
+	GDir *dir;
+	const char *file;
+	const char *homedir;
+	char *service_path;
+
+	homedir = g_get_home_dir();
+	if (homedir == NULL)
+		return;
+
+	service_path = g_strdup_printf("%s/.mms/%s/", homedir,
+							service->identity);
+
+	dir = g_dir_open(service_path, 0, NULL);
+	g_free(service_path);
+	if (dir == NULL)
+		return;
+
+	while ((file = g_dir_read_name(dir)) != NULL) {
+		const size_t suffix_len = 7;
+		char *uuid;
+
+		if (g_str_has_suffix(file, ".status") == FALSE)
+			continue;
+		if (strlen(file) - suffix_len == 0)
+			continue;
+
+		uuid = g_strndup(file, strlen(file) - suffix_len);
+
+		process_message_on_start(service, uuid);
+
+		g_free(uuid);
+	}
+
+	g_dir_close(dir);
+}
+
 int mms_service_register(struct mms_service *service)
 {
 	DBG("service %p", service);
@@ -962,6 +1146,8 @@ int mms_service_register(struct mms_service *service)
 	service_list = g_list_append(service_list, service);
 
 	emit_service_added(service);
+
+	mms_service_foreach_messages(service);
 
 	return 0;
 }
