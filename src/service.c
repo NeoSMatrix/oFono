@@ -1942,8 +1942,6 @@ void mms_service_push_notify(struct mms_service *service,
 	if (request == NULL)
 		goto out;
 
-	msg.uuid = g_strdup(uuid);
-
 	g_queue_push_tail(service->request_queue, request);
 
 	activate_bearer(service);
