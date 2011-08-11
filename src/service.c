@@ -486,9 +486,7 @@ static struct mms_request *create_request(enum mms_request_type type,
 				     O_WRONLY | O_CREAT | O_TRUNC,
 				     S_IWUSR | S_IRUSR);
 	if (request->fd < 0) {
-		g_free(request->data_path);
-
-		g_free(request);
+		mms_request_destroy(request);
 
 		return NULL;
 	}
