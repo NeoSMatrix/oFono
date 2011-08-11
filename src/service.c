@@ -1785,7 +1785,7 @@ static gboolean web_post_cb(const guint8 **data, gsize *length,
 
 	g_free(request->data_path);
 
-	request->data_path = g_strdup_printf("%s/.mms/send-conf.XXXXXX.mms",
+	request->data_path = g_strdup_printf("%s/.mms/post-rsp.XXXXXX.mms",
 					     g_get_home_dir());
 
 	request->fd = g_mkstemp_full(request->data_path,
