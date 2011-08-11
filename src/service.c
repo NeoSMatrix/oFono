@@ -1075,7 +1075,7 @@ register_sr:
 	}
 }
 
-static void mms_service_foreach_messages(struct mms_service *service)
+static void load_messages(struct mms_service *service)
 {
 	GDir *dir;
 	const char *file;
@@ -1145,7 +1145,7 @@ int mms_service_register(struct mms_service *service)
 
 	emit_service_added(service);
 
-	mms_service_foreach_messages(service);
+	load_messages(service);
 
 	return 0;
 }
