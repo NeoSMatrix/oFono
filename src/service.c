@@ -493,7 +493,7 @@ static struct mms_request *create_request(enum mms_request_type type,
 
 	request->result_cb = result_cb;
 
-	request->location = location;
+	request->location = g_strdup(location);
 
 	request->service = service;
 
@@ -1909,7 +1909,6 @@ void mms_service_push_notify(struct mms_service *service,
 	unsigned int nread;
 	const char *uuid;
 	GKeyFile *meta;
-	char *location;
 
 	DBG("service %p data %p len %d", service, data, len);
 
@@ -1938,15 +1937,10 @@ void mms_service_push_notify(struct mms_service *service,
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
-	location = g_strdup(msg.ni.location);
-
 	request = create_request(MMS_REQUEST_TYPE_GET,
-				 result_request_get, location, service);
-	if (request == NULL) {
-		g_free(location);
-
+				 result_request_get, msg.ni.location, service);
+	if (request == NULL)
 		goto out;
-	}
 
 	msg.uuid = g_strdup(uuid);
 
