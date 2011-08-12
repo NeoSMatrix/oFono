@@ -5,11 +5,23 @@ import dbus
 import csv
 
 if (len(sys.argv) < 4):
-	print "Usage: %s '<address>,...' '<smil-file-path>' '<content-id>,"\
-			" <content-type>, <file-path>'*" % (sys.argv[0])
-	print "Sample: send-message '12345,98765' '/home/test/smil.txt'"\
-			" 'id1,text/plain,/home/test/text.txt'"\
-			" 'id2,image/jpeg,/home/test/img.jpg'"
+	print "Usage: %s"\
+		" <recipient>,..."\
+		" <smil-file-path>"\
+		" <<content-id>,<content-type>,<file-path>>,..."\
+		% (sys.argv[0])
+	print "Sample(Related): %s"\
+		" \"+33611111111,+33622222222\""\
+		" \"smil.txt\""\
+		" \"cid-1,text/plain,text.txt\""\
+		" \"cid-2,image/jpeg,image.jpg\""\
+		% (sys.argv[0])
+	print "Sample(Mixed): %s"\
+		" \"+33611111111,+33622222222\""\
+		" \"\""\
+		" \"cid-1,text/plain,text.txt\""\
+		" \"cid-2,image/jpeg,image.jpg\""\
+		% (sys.argv[0])
 	sys.exit(1)
 
 bus = dbus.SessionBus()
@@ -30,9 +42,15 @@ for r in reader:
 	for i in r:
 		recipients.append(dbus.String(i))
 
-print "Smil path: %s" % (sys.argv[2])
-file = open(sys.argv[2],"r")
-smil = dbus.String(file.read())
+
+if sys.argv[2] == "":
+	print "Send MMS as Mixed"
+	smil = ""
+else:
+	print "Send MMS as Related"
+	print "Smil path: %s" % (sys.argv[2])
+	file = open(sys.argv[2],"r")
+	smil = dbus.String(file.read())
 
 attachments = dbus.Array([],signature=dbus.Signature('(sss)'))
 for a in sys.argv[3:]:
