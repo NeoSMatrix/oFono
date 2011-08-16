@@ -277,6 +277,37 @@ static gboolean valid_content_type(const char *ct)
 	return FALSE;
 }
 
+static gboolean mmap_file(const char *path, void **out_pdu, size_t *out_len)
+{
+	struct stat st;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		mms_error("Failed to open %s", path);
+		return FALSE;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		mms_error("Failed to stat %s", path);
+		close(fd);
+		return FALSE;
+	}
+
+	*out_pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+
+	close(fd);
+
+	if (*out_pdu == MAP_FAILED) {
+		mms_error("Failed to mmap %s", path);
+		return FALSE;
+	}
+
+	*out_len = st.st_size;
+
+	return TRUE;
+}
+
 static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 						struct mms_message *msg)
 {
@@ -326,9 +357,8 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 		const char *id;
 		const char *ct;
 		const char *filename;
-		int fd;
-		struct stat st;
 		struct mms_attachment *attach;
+		void *ptr;
 
 		if (++attach_num > MAX_ATTACHMENTS_NUMBER)
 			return FALSE;
@@ -361,29 +391,12 @@ static gboolean send_message_get_attachments(DBusMessageIter *top_iter,
 		if (attach == NULL)
 			return FALSE;
 
-		fd = open(filename, O_RDONLY);
-		if (fd < 0) {
+		if (mmap_file(filename, &ptr, &attach->length) == FALSE) {
 			g_free(attach);
 			return FALSE;
 		}
 
-		if (fstat(fd, &st) < 0) {
-			close(fd);
-			g_free(attach);
-			return FALSE;
-		}
-
-		attach->length = st.st_size;
-
-		attach->data = mmap(NULL, attach->length, PROT_READ, MAP_SHARED,
-					fd, 0);
-
-		close(fd);
-
-		if (attach->data == MAP_FAILED) {
-			g_free(attach);
-			return FALSE;
-		}
+		attach->data = ptr;
 
 		attach->content_id = g_strdup(id);
 
@@ -552,37 +565,24 @@ static inline char *create_transaction_id(void)
 static void result_request_post(guint status, const char *data_path,
 				gpointer user_data)
 {
-	int fd;
 	struct mms_message *msg;
-	struct stat st;
-	unsigned char *pdu;
 	struct mms_service *service = user_data;
 	const char *uuid;
 	GKeyFile *meta;
+	void *pdu;
+	size_t len;
 
 	if (status != 200)
 		return;
 
-	fd = open(data_path, O_RDONLY);
-	if (fd < 0) {
-		mms_error("Failed to open %s", data_path);
-		return;
-	}
-
 	msg = g_try_new0(struct mms_message, 1);
 	if (msg == NULL)
-		goto close;
+		return;
 
-	if (fstat(fd, &st) < 0) {
-		mms_error("Failed to stat %s", data_path);
-		goto free_msg;
-	}
-
-	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (pdu == NULL || pdu == MAP_FAILED)
+	if (mmap_file(data_path, &pdu, &len) == FALSE)
 		goto free_msg;
 
-	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
+	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode pdu %s", data_path);
 		goto unmap;
 	}
@@ -605,14 +605,11 @@ static void result_request_post(guint status, const char *data_path,
 	emit_message_added(service, msg);
 
 unmap:
-	munmap(pdu, st.st_size);
+	munmap(pdu, len);
 
 free_msg:
 	mms_message_free(msg);
 	g_free(msg);
-
-close:
-	close(fd);
 }
 
 static void append_message(const char *path, struct mms_message *msg,
@@ -932,14 +929,13 @@ static void emit_service_removed(struct mms_service *service)
 static gboolean load_message_from_store(const char *service_id,
 				const char *uuid, struct mms_message *msg)
 {
-	int fd;
-	struct stat st;
-	unsigned char *pdu;
 	GKeyFile *meta;
 	char *state = NULL;
 	gboolean read_status;
 	char *data_path = NULL;
 	gboolean success = FALSE;
+	void *pdu;
+	size_t len;
 
 	meta = mms_store_meta_open(service_id, uuid);
 	if (meta == NULL)
@@ -955,31 +951,16 @@ static gboolean load_message_from_store(const char *service_id,
 	if (data_path == NULL)
 		goto out;
 
-	fd = open(data_path, O_RDONLY);
-	if (fd < 0) {
-		mms_error("Failed to open %s", data_path);
-		goto out;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		close(fd);
-		goto out;
-	}
-
-	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-
-	close(fd);
-
-	if (pdu == NULL || pdu == MAP_FAILED)
+	if (mmap_file(data_path, &pdu, &len) == FALSE)
 		goto out;
 
-	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
+	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode %s", data_path);
-		munmap(pdu, st.st_size);
+		munmap(pdu, len);
 		goto out;
 	}
 
-	munmap(pdu, st.st_size);
+	munmap(pdu, len);
 
 	msg->uuid = g_strdup(uuid);
 
@@ -1219,23 +1200,12 @@ static void append_smil(DBusMessageIter *dict, const char *path,
 {
 	const char *to_codeset = "utf-8";
 	char *from_codeset;
-	int fd;
-	struct stat st;
-	unsigned char *data;
+	void *data;
+	size_t len;
 	char *smil;
 
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		mms_error("Failed to open %s\n", path);
+	if (mmap_file(path, &data, &len) == FALSE)
 		return;
-	}
-
-	if (fstat(fd, &st) < 0)
-		goto out;
-
-	data = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (data == NULL || data == MAP_FAILED)
-		goto out;
 
 	from_codeset = mms_content_type_get_param_value(part->content_type,
 								"charset");
@@ -1250,18 +1220,16 @@ static void append_smil(DBusMessageIter *dict, const char *path,
 					part->length, to_codeset, "us-ascii",
 					NULL, NULL, NULL);
 
-	munmap(data, st.st_size);
+	munmap(data, len);
 
 	if (smil == NULL) {
 		mms_error("Failed to convert smil attachment\n");
-		goto out;
+		return;
 	}
 
 	mms_dbus_dict_append_basic(dict, "Smil", DBUS_TYPE_STRING, &smil);
 
 	g_free(smil);
-out:
-	close(fd);
 }
 
 static void append_msg_attachments(DBusMessageIter *dict, const char *path,
@@ -1630,37 +1598,17 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 static void result_request_get(guint status, const char *data_path,
 				gpointer user_data)
 {
-	int fd;
 	struct mms_message *msg;
-	struct stat st;
-	unsigned char *pdu;
 	struct mms_service *service = user_data;
 	const char *uuid;
 	GKeyFile *meta;
+	void *pdu;
+	size_t len;
 
 	if (status != 200)
 		return;
 
-	fd = open(data_path, O_RDONLY);
-	if (fd < 0) {
-		mms_error("Failed to open %s", data_path);
-
-		return;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		mms_error("Failed to stat %s", data_path);
-
-		close(fd);
-
-		return;
-	}
-
-	pdu = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-
-	close(fd);
-
-	if (pdu == NULL || pdu == MAP_FAILED)
+	if (mmap_file(data_path, &pdu, &len) == FALSE)
 		return;
 
 	uuid = mms_store_file(service->identity, data_path);
@@ -1671,7 +1619,7 @@ static void result_request_get(guint status, const char *data_path,
 	if (msg == NULL)
 		goto exit;
 
-	if (mms_message_decode(pdu, st.st_size, msg) == FALSE) {
+	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode %s", data_path);
 
 		goto error;
@@ -1700,7 +1648,7 @@ error:
 	g_free(msg);
 
 exit:
-	munmap(pdu, st.st_size);
+	munmap(pdu, len);
 }
 
 static gboolean web_get_cb(GWebResult *result, gpointer user_data)
@@ -1828,7 +1776,7 @@ static guint process_request(struct mms_request *request)
 
 		close(request->fd);
 
-		if (request->data == NULL || request->data == MAP_FAILED) {
+		if (request->data == MAP_FAILED) {
 			g_printerr("Failed to mmap %s\n", request->data_path);
 			break;
 		}
