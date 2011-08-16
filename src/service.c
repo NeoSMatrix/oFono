@@ -457,9 +457,8 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 }
 
 static struct mms_request *create_request(enum mms_request_type type,
-					  mms_request_result_cb_t result_cb,
-					  char *location,
-					  struct mms_service *service)
+				mms_request_result_cb_t result_cb,
+				char *location, struct mms_service *service)
 {
 	struct mms_request *request;
 
@@ -483,8 +482,8 @@ static struct mms_request *create_request(enum mms_request_type type,
 	}
 
 	request->fd = g_mkstemp_full(request->data_path,
-				     O_WRONLY | O_CREAT | O_TRUNC,
-				     S_IWUSR | S_IRUSR);
+					O_WRONLY | O_CREAT | O_TRUNC,
+							S_IWUSR | S_IRUSR);
 	if (request->fd < 0) {
 		mms_request_destroy(request);
 
@@ -547,7 +546,7 @@ static void activate_bearer(struct mms_service *service)
 static inline char *create_transaction_id(void)
 {
 	return g_strdup_printf("%08X%s", transaction_id_start++,
-			       "0123456789ABCDEF0123456789ABCDEF");
+					"0123456789ABCDEF0123456789ABCDEF");
 }
 
 static void result_request_post(guint status, const char *data_path,
@@ -732,7 +731,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	close(request->fd);
 
 	msg->uuid = g_strdup(mms_store_file(service->identity,
-					    request->data_path));
+						request->data_path));
 
 	if (mms_message_register(service, msg) < 0) {
 		release_attachement_data(msg->attachments);
@@ -751,7 +750,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	g_free(request->data_path);
 
 	request->data_path = g_strdup_printf("%s/.mms/%s/%s", g_get_home_dir(),
-					     service->identity, msg->uuid);
+						service->identity, msg->uuid);
 
 	request->fd = open(request->data_path, O_RDONLY);
 
@@ -1754,7 +1753,7 @@ complete:
 
 	if (request->result_cb != NULL)
 		request->result_cb(request->status,
-				   request->data_path, service);
+					request->data_path, service);
 
 	mms_request_destroy(request);
 
@@ -1766,7 +1765,7 @@ complete:
 }
 
 static gboolean web_post_cb(const guint8 **data, gsize *length,
-			    gpointer user_data)
+							gpointer user_data)
 {
 	struct mms_request *request = user_data;
 
@@ -1787,11 +1786,11 @@ static gboolean web_post_cb(const guint8 **data, gsize *length,
 	g_free(request->data_path);
 
 	request->data_path = g_strdup_printf("%s/.mms/post-rsp.XXXXXX.mms",
-					     g_get_home_dir());
+							g_get_home_dir());
 
 	request->fd = g_mkstemp_full(request->data_path,
-				     O_WRONLY | O_CREAT | O_TRUNC,
-				     S_IWUSR | S_IRUSR);
+					O_WRONLY | O_CREAT | O_TRUNC,
+							S_IWUSR | S_IRUSR);
 
 	return FALSE;
 }
@@ -1825,7 +1824,7 @@ static guint process_request(struct mms_request *request)
 		request->data_size = status.st_size;
 
 		request->data = mmap(NULL, request->data_size, PROT_READ,
-				     MAP_SHARED, request->fd, 0);
+						MAP_SHARED, request->fd, 0);
 
 		close(request->fd);
 
