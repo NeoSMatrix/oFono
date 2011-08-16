@@ -118,8 +118,8 @@ struct mms_notification_resp_ind {
 
 struct mms_attachment {
 	unsigned char *data;
-	ssize_t offset;
-	ssize_t length;
+	size_t offset;
+	size_t length;
 	char *content_type;
 	char *content_id;
 };
