@@ -695,6 +695,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 		return __mms_error_trans_failure(dbus_msg);
 
 	msg->type = MMS_MESSAGE_TYPE_SEND_REQ;
+	msg->version = MMS_MESSAGE_VERSION_1_0;
 
 	msg->sr.status = MMS_MESSAGE_STATUS_DRAFT;
 
