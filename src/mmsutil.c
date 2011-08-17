@@ -1062,6 +1062,8 @@ void mms_message_free(struct mms_message *msg)
 		g_slist_foreach(msg->attachments, free_attachment, NULL);
 		g_slist_free(msg->attachments);
 	}
+
+	g_free(msg);
 }
 
 static void fb_init(struct file_buffer *fb, int fd)
