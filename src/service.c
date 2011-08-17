@@ -65,8 +65,9 @@ static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
 
 static const char *sep_chars = "()<>@,;:\\\"/[]?={} \t";
 
-typedef void (*mms_request_result_cb_t) (guint status, const char *data_path,
-						gpointer user_data);
+struct mms_request;
+
+typedef void (*mms_request_result_cb_t) (struct mms_request *request);
 
 struct mms_service {
 	gint refcount;
@@ -562,35 +563,34 @@ static inline char *create_transaction_id(void)
 					"0123456789ABCDEF0123456789ABCDEF");
 }
 
-static void result_request_post(guint status, const char *data_path,
-				gpointer user_data)
+static void result_request_post(struct mms_request *request)
 {
 	struct mms_message *msg;
-	struct mms_service *service = user_data;
+	struct mms_service *service = request->service;
 	const char *uuid;
 	GKeyFile *meta;
 	void *pdu;
 	size_t len;
 
-	if (status != 200)
+	if (request->status != 200)
 		return;
 
 	msg = g_try_new0(struct mms_message, 1);
 	if (msg == NULL)
 		return;
 
-	if (mmap_file(data_path, &pdu, &len) == FALSE)
+	if (mmap_file(request->data_path, &pdu, &len) == FALSE)
 		goto free_msg;
 
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
-		mms_error("Failed to decode pdu %s", data_path);
+		mms_error("Failed to decode pdu %s", request->data_path);
 		munmap(pdu, len);
 		goto free_msg;
 	}
 
 	munmap(pdu, len);
 
-	uuid = mms_store_file(service->identity, data_path);
+	uuid = mms_store_file(service->identity, request->data_path);
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
@@ -993,8 +993,7 @@ out:
 	return success;
 }
 
-static void result_request_get(guint status, const char *data_path,
-				gpointer user_data);
+static void result_request_get(struct mms_request *request);
 
 static void process_message_on_start(struct mms_service *service,
 							const char *uuid)
@@ -1595,23 +1594,22 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static void result_request_get(guint status, const char *data_path,
-				gpointer user_data)
+static void result_request_get(struct mms_request *request)
 {
 	struct mms_message *msg;
-	struct mms_service *service = user_data;
+	struct mms_service *service = request->service;
 	const char *uuid;
 	GKeyFile *meta;
 	void *pdu;
 	size_t len;
 
-	if (status != 200)
+	if (request->status != 200)
 		return;
 
-	if (mmap_file(data_path, &pdu, &len) == FALSE)
+	if (mmap_file(request->data_path, &pdu, &len) == FALSE)
 		return;
 
-	uuid = mms_store_file(service->identity, data_path);
+	uuid = mms_store_file(service->identity, request->data_path);
 	if (uuid == NULL)
 		goto exit;
 
@@ -1620,7 +1618,7 @@ static void result_request_get(guint status, const char *data_path,
 		goto exit;
 
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
-		mms_error("Failed to decode %s", data_path);
+		mms_error("Failed to decode %s", request->data_path);
 
 		goto error;
 	}
@@ -1699,8 +1697,7 @@ complete:
 	service = request->service;
 
 	if (request->result_cb != NULL)
-		request->result_cb(request->status,
-					request->data_path, service);
+		request->result_cb(request);
 
 	mms_request_destroy(request);
 
