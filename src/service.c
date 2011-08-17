@@ -776,7 +776,7 @@ static GDBusSignalTable service_signals[] = {
 	{ }
 };
 
-static void free_message(gpointer data)
+static void destroy_message(gpointer data)
 {
 	struct mms_message *mms = data;
 
@@ -802,7 +802,7 @@ struct mms_service *mms_service_create(void)
 	service->current_request_id = 0;
 
 	service->messages = g_hash_table_new_full(g_str_hash, g_str_equal,
-							NULL, free_message);
+							NULL, destroy_message);
 	if (service->messages == NULL) {
 		g_queue_free(service->request_queue);
 		g_free(service);
