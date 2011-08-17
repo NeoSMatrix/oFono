@@ -609,7 +609,6 @@ unmap:
 
 free_msg:
 	mms_message_free(msg);
-	g_free(msg);
 }
 
 static void append_message(const char *path, struct mms_message *msg,
@@ -701,7 +700,6 @@ static DBusMessage *send_message(DBusConnection *conn,
 		release_attachement_data(msg->attachments);
 
 		mms_message_free(msg);
-		g_free(msg);
 
 		return __mms_error_invalid_args(dbus_msg);
 	}
@@ -733,7 +731,6 @@ static DBusMessage *send_message(DBusConnection *conn,
 	if (mms_message_register(service, msg) < 0) {
 		release_attachement_data(msg->attachments);
 		mms_message_free(msg);
-		g_free(msg);
 
 		mms_request_destroy(request);
 
@@ -784,7 +781,6 @@ static void free_message(gpointer data)
 	struct mms_message *mms = data;
 
 	mms_message_free(mms);
-	g_free(mms);
 }
 
 struct mms_service *mms_service_create(void)
@@ -1008,14 +1004,14 @@ static void process_message_on_start(struct mms_service *service,
 		return;
 
 	if (load_message_from_store(service_id, uuid, msg) == FALSE) {
-		free_message(msg);
+		mms_message_free(msg);
 		return;
 	}
 
 	if (msg->type == MMS_MESSAGE_TYPE_NOTIFICATION_IND) {
 		char *location = g_strdup(msg->ni.location);
 
-		free_message(msg);
+		mms_message_free(msg);
 
 		request = create_request(MMS_REQUEST_TYPE_GET,
 					 result_request_get, location, service);
@@ -1042,7 +1038,7 @@ register_sr:
 			/* TODO - Create http request */
 			request = NULL;
 
-			free_message(msg);
+			mms_message_free(msg);
 		} else {
 			request = NULL;
 			mms_message_register(service, msg);
@@ -1645,7 +1641,6 @@ static void result_request_get(guint status, const char *data_path,
 error:
 	mms_store_remove(service->identity, uuid);
 	mms_message_free(msg);
-	g_free(msg);
 
 exit:
 	munmap(pdu, len);
@@ -1853,27 +1848,33 @@ void mms_service_push_notify(struct mms_service *service,
 					unsigned char *data, int len)
 {
 	struct mms_request *request;
-	struct mms_message msg;
+	struct mms_message *msg;
 	unsigned int nread;
 	const char *uuid;
 	GKeyFile *meta;
 
 	DBG("service %p data %p len %d", service, data, len);
 
-	if (mms_push_notify(data, len, &nread) == FALSE)
+	msg = g_try_new0(struct mms_message, 1);
+	if (msg == NULL) {
+		mms_error("Failed to allocate message");
 		return;
+	}
+
+	if (mms_push_notify(data, len, &nread) == FALSE)
+		goto out;
 
 	uuid = mms_store(service->identity, data + nread, len - nread);
 	if (uuid == NULL)
-		return;
+		goto out;
 
-	if (mms_message_decode(data + nread, len - nread, &msg) == FALSE)
+	if (mms_message_decode(data + nread, len - nread, msg) == FALSE)
 		goto error;
 
-	if (msg.type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
+	if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
 		goto error;
 
-	dump_notification_ind(&msg);
+	dump_notification_ind(msg);
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
@@ -1886,7 +1887,7 @@ void mms_service_push_notify(struct mms_service *service,
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
 	request = create_request(MMS_REQUEST_TYPE_GET,
-				 result_request_get, msg.ni.location, service);
+				 result_request_get, msg->ni.location, service);
 	if (request == NULL)
 		goto out;
 
@@ -1900,7 +1901,7 @@ error:
 	mms_store_remove(service->identity, uuid);
 
 out:
-	mms_message_free(&msg);
+	mms_message_free(msg);
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
