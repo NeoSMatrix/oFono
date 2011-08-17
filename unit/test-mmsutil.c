@@ -813,9 +813,15 @@ static const struct mms_test mms_m_send_conf_test_2 = {
 static void test_decode_mms(gconstpointer data)
 {
 	const struct mms_test *test = data;
-	struct mms_message msg;
+	struct mms_message *msg;
 	unsigned int len;
 	gboolean ret;
+
+	msg = g_try_new0(struct mms_message, 1);
+	if (msg == NULL) {
+		g_printerr("Failed allocate message");
+		return;
+	}
 
 	if (test->pathname != NULL) {
 		struct stat st;
@@ -825,13 +831,13 @@ static void test_decode_mms(gconstpointer data)
 		fd = open(test->pathname, O_RDONLY);
 		if (fd < 0) {
 			g_printerr("Failed to open %s\n", test->pathname);
-			return;
+			goto out;
 		}
 
 		if (fstat(fd, &st) < 0) {
 			g_printerr("Failed to stat %s\n", test->pathname);
 			close(fd);
-			return;
+			goto out;
 		}
 
 		len = st.st_size;
@@ -840,10 +846,10 @@ static void test_decode_mms(gconstpointer data)
 		if (!pdu || pdu == MAP_FAILED) {
 			g_printerr("Failed to mmap %s\n", test->pathname);
 			close(fd);
-			return;
+			goto out;
 		}
 
-		ret = mms_message_decode(pdu, len, &msg);
+		ret = mms_message_decode(pdu, len, msg);
 
 		munmap(pdu, len);
 
@@ -853,7 +859,7 @@ static void test_decode_mms(gconstpointer data)
 
 		len = test->len;
 
-		ret = mms_message_decode(pdu, len, &msg);
+		ret = mms_message_decode(pdu, len, msg);
 	}
 
 	g_assert(ret == TRUE);
@@ -862,30 +868,31 @@ static void test_decode_mms(gconstpointer data)
 		g_print("Overall message size: %d\n", len);
 
 		g_print("MMS message type: %s\n",
-				message_type_to_string(msg.type));
-		g_print("MMS transaction id: %s\n", msg.transaction_id);
-		g_print("MMS version: %u.%u\n", (msg.version & 0x70) >> 4,
-							msg.version & 0x0f);
+				message_type_to_string(msg->type));
+		g_print("MMS transaction id: %s\n", msg->transaction_id);
+		g_print("MMS version: %u.%u\n", (msg->version & 0x70) >> 4,
+							msg->version & 0x0f);
 
-		switch (msg.type) {
+		switch (msg->type) {
 		case MMS_MESSAGE_TYPE_NOTIFICATION_IND:
-			dump_notification_ind(&msg);
+			dump_notification_ind(msg);
 			break;
 		case MMS_MESSAGE_TYPE_RETRIEVE_CONF:
-			dump_retrieve_conf(&msg);
+			dump_retrieve_conf(msg);
 			break;
 		case MMS_MESSAGE_TYPE_SEND_CONF:
-			dump_send_conf(&msg);
+			dump_send_conf(msg);
 			break;
 		case MMS_MESSAGE_TYPE_SEND_REQ:
-			dump_send_req(&msg);
+			dump_send_req(msg);
 			break;
 		default:
 			break;
 		}
 	}
 
-	mms_message_free(&msg);
+out:
+	mms_message_free(msg);
 }
 
 struct mms_encode_test {
