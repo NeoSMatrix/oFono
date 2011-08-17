@@ -563,7 +563,7 @@ static inline char *create_transaction_id(void)
 					"0123456789ABCDEF0123456789ABCDEF");
 }
 
-static void result_request_post(struct mms_request *request)
+static void result_request_send_conf(struct mms_request *request)
 {
 	struct mms_message *msg;
 	struct mms_service *service = request->service;
@@ -715,7 +715,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	}
 
 	request = create_request(MMS_REQUEST_TYPE_POST,
-				 result_request_post, NULL, service);
+				result_request_send_conf, NULL, service);
 	if (request == NULL) {
 		release_attachement_data(msg->attachments);
 		return __mms_error_trans_failure(dbus_msg);
@@ -993,7 +993,7 @@ out:
 	return success;
 }
 
-static void result_request_get(struct mms_request *request);
+static void result_request_retrieve_conf(struct mms_request *request);
 
 static void process_message_on_start(struct mms_service *service,
 							const char *uuid)
@@ -1017,7 +1017,8 @@ static void process_message_on_start(struct mms_service *service,
 		mms_message_free(msg);
 
 		request = create_request(MMS_REQUEST_TYPE_GET,
-					 result_request_get, location, service);
+					result_request_retrieve_conf,
+					location, service);
 		if (request == NULL) {
 			g_free(location);
 			return;
@@ -1025,7 +1026,7 @@ static void process_message_on_start(struct mms_service *service,
 	} else if (msg->type == MMS_MESSAGE_TYPE_SEND_REQ) {
 		if (msg->sr.status == MMS_MESSAGE_STATUS_DRAFT) {
 			request = create_request(MMS_REQUEST_TYPE_POST,
-				result_request_post, NULL, service);
+				result_request_send_conf, NULL, service);
 			if (request == NULL)
 				goto register_sr;
 
@@ -1594,7 +1595,7 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static void result_request_get(struct mms_request *request)
+static void result_request_retrieve_conf(struct mms_request *request)
 {
 	struct mms_message *msg;
 	struct mms_service *service = request->service;
@@ -1890,7 +1891,8 @@ void mms_service_push_notify(struct mms_service *service,
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
 	request = create_request(MMS_REQUEST_TYPE_GET,
-				 result_request_get, msg->ni.location, service);
+				result_request_retrieve_conf,
+				msg->ni.location, service);
 	if (request == NULL)
 		goto out;
 
