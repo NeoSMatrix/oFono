@@ -584,14 +584,17 @@ static void result_request_post(guint status, const char *data_path,
 
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode pdu %s", data_path);
-		goto unmap;
+		munmap(pdu, len);
+		goto free_msg;
 	}
+
+	munmap(pdu, len);
 
 	uuid = mms_store_file(service->identity, data_path);
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
-		goto unmap;
+		goto free_msg;
 
 	g_key_file_set_string(meta, "info", "state", "sent");
 
@@ -601,11 +604,11 @@ static void result_request_post(guint status, const char *data_path,
 
 	msg->uuid = g_strdup(uuid);
 
-	mms_message_register(service, msg);
-	emit_message_added(service, msg);
+	if (mms_message_register(service, msg) != 0)
+		goto free_msg;
 
-unmap:
-	munmap(pdu, len);
+	emit_message_added(service, msg);
+	return;
 
 free_msg:
 	mms_message_free(msg);
