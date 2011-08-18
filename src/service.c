@@ -1878,6 +1878,8 @@ void mms_service_push_notify(struct mms_service *service,
 	if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
 		goto error;
 
+	msg->uuid = g_strdup(uuid);
+
 	dump_notification_ind(msg);
 
 	meta = mms_store_meta_open(service->identity, uuid);
