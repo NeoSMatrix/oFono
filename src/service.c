@@ -1014,6 +1014,50 @@ out:
 }
 
 static void result_request_retrieve_conf(struct mms_request *request);
+static void result_request_notify_resp(struct mms_request *request);
+
+static struct mms_request *build_notify_resp_ind(struct mms_service *service,
+					enum mms_message_notify_status status,
+					struct mms_message *rc_msg)
+{
+	struct mms_message *ni_msg;
+	struct mms_request *notify_request;
+	gboolean result;
+
+	ni_msg = g_try_new0(struct mms_message, 1);
+	if (ni_msg == NULL)
+		return NULL;
+
+	ni_msg->type = MMS_MESSAGE_TYPE_NOTIFYRESP_IND;
+	ni_msg->version = MMS_MESSAGE_VERSION_1_0;
+	ni_msg->transaction_id = g_strdup(rc_msg->transaction_id);
+	ni_msg->nri.notify_status = status;
+
+	notify_request = create_request(MMS_REQUEST_TYPE_POST_TMP,
+					result_request_notify_resp,
+					NULL, service, rc_msg);
+
+	if (notify_request == NULL) {
+		mms_message_free(ni_msg);
+		return NULL;
+	}
+
+	result = mms_message_encode(ni_msg, notify_request->fd);
+
+	close(notify_request->fd);
+
+	mms_message_free(ni_msg);
+
+	if (result == FALSE) {
+		close(notify_request->fd);
+		unlink(notify_request->data_path);
+		mms_request_destroy(notify_request);
+
+		return NULL;
+	}
+
+	return notify_request;
+}
 
 static void process_message_on_start(struct mms_service *service,
 							const char *uuid)
@@ -1614,6 +1658,42 @@ static gboolean bearer_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static void result_request_notify_resp(struct mms_request *request)
+{
+	struct mms_message *msg;
+	GKeyFile *meta;
+
+	unlink(request->data_path);
+
+	if (request->status != 200) {
+		mms_error("POST m.notify.resp.ind failed with status %d",
+						request->status);
+		return;
+	}
+
+	if (request->msg == NULL)
+		return;
+
+	msg = mms_request_steal_message(request);
+
+	if (mms_message_register(request->service, msg) != 0) {
+		mms_message_free(msg);
+		return;
+	}
+
+	emit_message_added(request->service, msg);
+
+	meta = mms_store_meta_open(request->service->identity,
+				   msg->uuid);
+	if (meta == NULL)
+		return;
+
+	g_key_file_set_string(meta, "info", "state", "received");
+
+	mms_store_meta_close(request->service->identity,
+			     msg->uuid, meta, TRUE);
+}
+
 static void result_request_retrieve_conf(struct mms_request *request)
 {
 	struct mms_message *msg;
@@ -1622,6 +1702,8 @@ static void result_request_retrieve_conf(struct mms_request *request)
 	GKeyFile *meta;
 	void *pdu;
 	size_t len;
+	struct mms_request *notify_request;
+	gboolean decode_success;
 
 	if (request->status != 200)
 		return;
@@ -1637,30 +1719,44 @@ static void result_request_retrieve_conf(struct mms_request *request)
 	if (msg == NULL)
 		goto exit;
 
-	if (mms_message_decode(pdu, len, msg) == FALSE) {
+	decode_success = mms_message_decode(pdu, len, msg);
+
+	if (decode_success == TRUE) {
+		msg->uuid = g_strdup(uuid);
+
+		meta = mms_store_meta_open(service->identity, uuid);
+		if (meta == NULL)
+			goto error;
+
+		g_key_file_set_boolean(meta, "info", "read", FALSE);
+		g_key_file_set_string(meta, "info", "state", "downloaded");
+
+		mms_store_meta_close(service->identity, uuid, meta, TRUE);
+
+		notify_request = build_notify_resp_ind(service,
+					MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED,
+					msg);
+	} else {
 		mms_error("Failed to decode %s", request->data_path);
 
-		goto error;
+		notify_request = build_notify_resp_ind(service,
+				MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED,
+				NULL);
 	}
 
-	msg->uuid = g_strdup(uuid);
-
-	meta = mms_store_meta_open(service->identity, uuid);
-	if (meta == NULL)
-		goto error;
-
-	g_key_file_set_boolean(meta, "info", "read", FALSE);
-
-	g_key_file_set_string(meta, "info", "state", "downloaded");
-
-	mms_store_meta_close(service->identity, uuid, meta, TRUE);
-
-	mms_message_register(service, msg);
-	emit_message_added(service, msg);
-
+	/* Remove notify.ind pdu */
 	mms_store_remove(service->identity, request->msg->uuid);
 
-	goto exit;
+	if (notify_request == NULL)
+		goto error;
+
+	notify_request->fd = open(notify_request->data_path, O_RDONLY);
+
+	g_queue_push_tail(service->request_queue, notify_request);
+	activate_bearer(service);
+
+	if (decode_success == TRUE)
+		goto exit;
 
 error:
 	mms_store_remove(service->identity, uuid);
