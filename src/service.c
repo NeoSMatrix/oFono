@@ -121,6 +121,16 @@ static void mms_request_destroy(struct mms_request *request)
 	g_free(request);
 }
 
+static struct mms_message *mms_request_steal_message(struct mms_request
+								*request)
+{
+	struct mms_message *msg = request->msg;
+
+	request->msg = NULL;
+
+	return msg;
+}
+
 static DBusMessage *msg_delete(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
