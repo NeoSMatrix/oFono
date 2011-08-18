@@ -476,7 +476,8 @@ static gboolean send_message_get_args(DBusMessage *dbus_msg,
 
 static struct mms_request *create_request(enum mms_request_type type,
 				mms_request_result_cb_t result_cb,
-				char *location, struct mms_service *service)
+				char *location, struct mms_service *service,
+				struct mms_message *msg)
 {
 	struct mms_request *request;
 
@@ -513,6 +514,8 @@ static struct mms_request *create_request(enum mms_request_type type,
 	request->location = g_strdup(location);
 
 	request->service = service;
+
+	request->msg = msg;
 
 	request->status = 0;
 
@@ -719,7 +722,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 	}
 
 	request = create_request(MMS_REQUEST_TYPE_POST,
-				result_request_send_conf, NULL, service);
+				result_request_send_conf, NULL, service,
+				NULL);
 	if (request == NULL) {
 		release_attachement_data(msg->attachments);
 		return __mms_error_trans_failure(dbus_msg);
@@ -1018,19 +1022,18 @@ static void process_message_on_start(struct mms_service *service,
 	if (msg->type == MMS_MESSAGE_TYPE_NOTIFICATION_IND) {
 		char *location = g_strdup(msg->ni.location);
 
-		mms_message_free(msg);
-
 		request = create_request(MMS_REQUEST_TYPE_GET,
 					result_request_retrieve_conf,
-					location, service);
+					location, service, msg);
 		if (request == NULL) {
+			mms_message_free(msg);
 			g_free(location);
 			return;
 		}
 	} else if (msg->type == MMS_MESSAGE_TYPE_SEND_REQ) {
 		if (msg->sr.status == MMS_MESSAGE_STATUS_DRAFT) {
 			request = create_request(MMS_REQUEST_TYPE_POST,
-				result_request_send_conf, NULL, service);
+				result_request_send_conf, NULL, service, NULL);
 			if (request == NULL)
 				goto register_sr;
 
@@ -1896,7 +1899,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	request = create_request(MMS_REQUEST_TYPE_GET,
 				result_request_retrieve_conf,
-				msg->ni.location, service);
+				msg->ni.location, service, msg);
 	if (request == NULL)
 		goto out;
 
@@ -1904,7 +1907,7 @@ void mms_service_push_notify(struct mms_service *service,
 
 	activate_bearer(service);
 
-	goto out;
+	return;
 
 error:
 	mms_store_remove(service->identity, uuid);
