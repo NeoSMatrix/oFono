@@ -1102,10 +1102,11 @@ register_sr:
 		mms_message_register(service, msg);
 	} else if (msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF) {
 		if (msg->rc.status == MMS_MESSAGE_STATUS_DOWNLOADED) {
-			/* TODO - Create http request */
-			request = NULL;
-
-			mms_message_free(msg);
+			request = build_notify_resp_ind(service,
+					MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED,
+					msg);
+			if (request == NULL)
+				mms_message_free(msg);
 		} else {
 			request = NULL;
 			mms_message_register(service, msg);
