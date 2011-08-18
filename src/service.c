@@ -101,6 +101,7 @@ struct mms_request {
 	guint16 status;
 	struct mms_service *service;
 	mms_request_result_cb_t result_cb;
+	struct mms_message *msg;
 };
 
 static GList *service_list;
@@ -113,6 +114,9 @@ static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
 	g_free(request->location);
+	if (request->msg != NULL)
+		mms_message_free(request->msg);
+
 	g_free(request);
 }
 
