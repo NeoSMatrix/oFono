@@ -1646,6 +1646,8 @@ static void result_request_retrieve_conf(struct mms_request *request)
 	mms_message_register(service, msg);
 	emit_message_added(service, msg);
 
+	mms_store_remove(service->identity, request->msg->uuid);
+
 	goto exit;
 
 error:
