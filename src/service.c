@@ -614,20 +614,17 @@ free_msg:
 	mms_message_free(msg);
 }
 
-static void append_message(const char *path, struct mms_message *msg,
-							DBusMessageIter *iter);
+static void append_message(const char *path, const struct mms_service *service,
+				struct mms_message *msg, DBusMessageIter *iter);
 
-static void append_message_entry(gpointer key, gpointer value,
-							gpointer user_data)
+static void append_message_entry(char *path, const struct mms_service *service,
+				struct mms_message *msg, DBusMessageIter *iter)
 {
 	DBusMessageIter entry;
-	char *path = key;
-	struct mms_message *msg = value;
-	DBusMessageIter *iter = user_data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
 
-	append_message(path, msg, &entry);
+	append_message(path, service, msg, &entry);
 
 	dbus_message_iter_close_container(iter, &entry);
 }
@@ -637,7 +634,9 @@ static DBusMessage *get_messages(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
-	struct mms_service *service = data;
+	const struct mms_service *service = data;
+	GHashTableIter table_iter;
+	gpointer key, value;
 
 	reply = dbus_message_new_method_return(dbus_msg);
 	if (reply == NULL)
@@ -648,7 +647,9 @@ static DBusMessage *get_messages(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 							"(oa{sv})", &array);
 
-	g_hash_table_foreach(service->messages, append_message_entry, &array);
+	g_hash_table_iter_init(&table_iter, service->messages);
+	while (g_hash_table_iter_next(&table_iter, &key, &value))
+		append_message_entry(key, service, value, &array);
 
 	dbus_message_iter_close_container(&iter, &array);
 
@@ -1406,8 +1407,8 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 		append_msg_recipients(dict, msg);
 }
 
-static void append_message(const char *path, struct mms_message *msg,
-							DBusMessageIter *iter)
+static void append_message(const char *path, const struct mms_service *service,
+				struct mms_message *msg, DBusMessageIter *iter)
 {
 	DBusMessageIter dict;
 
@@ -1435,8 +1436,8 @@ static void append_message(const char *path, struct mms_message *msg,
 	}
 
 	if (msg->attachments != NULL) {
-		char *pdu_path = g_strdup_printf("%s/.mms/%s", g_get_home_dir(),
-							path);
+		char *pdu_path = mms_store_get_path(service->identity,
+								msg->uuid);
 		append_msg_attachments(&dict, pdu_path, msg);
 		g_free(pdu_path);
 	}
@@ -1459,7 +1460,7 @@ static void emit_message_added(const struct mms_service *service,
 
 	dbus_message_iter_init_append(signal, &iter);
 
-	append_message(msg->path, msg, &iter);
+	append_message(msg->path, service, msg, &iter);
 
 	g_dbus_send_message(connection, signal);
 }
