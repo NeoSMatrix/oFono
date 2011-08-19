@@ -87,7 +87,8 @@ struct mms_service {
 
 enum mms_request_type {
 	MMS_REQUEST_TYPE_GET,
-	MMS_REQUEST_TYPE_POST
+	MMS_REQUEST_TYPE_POST,
+	MMS_REQUEST_TYPE_POST_TMP
 };
 
 struct mms_request {
@@ -494,6 +495,7 @@ static struct mms_request *create_request(enum mms_request_type type,
 
 		break;
 	case MMS_REQUEST_TYPE_POST:
+	case MMS_REQUEST_TYPE_POST_TMP:
 		request->data_path = g_strdup_printf("%s%s", g_get_home_dir(),
 						"/.mms/send.XXXXXX.mms");
 
@@ -1737,6 +1739,9 @@ static gboolean web_post_cb(const guint8 **data, gsize *length,
 
 	/* data transfer complete */
 
+	if (request->type == MMS_REQUEST_TYPE_POST_TMP)
+		unlink(request->data_path);
+
 	g_free(request->data_path);
 
 	request->data_path = g_strdup_printf("%s/.mms/post-rsp.XXXXXX.mms",
@@ -1770,6 +1775,7 @@ static guint process_request(struct mms_request *request)
 		return id;
 
 	case MMS_REQUEST_TYPE_POST:
+	case MMS_REQUEST_TYPE_POST_TMP:
 		if (g_stat(request->data_path, &status) != 0) {
 			close(request->fd);
 			break;
