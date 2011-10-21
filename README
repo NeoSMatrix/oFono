@@ -9,6 +9,7 @@ Compilation and installation
 
 In order to compile proxy daemon you need following software packages:
 	- GCC compiler
+	- D-Bus library
 	- GLib library
 
 To configure run:
