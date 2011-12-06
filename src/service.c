@@ -749,6 +749,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	close(request->fd);
 
+	request->fd = -1;
+
 	msg->uuid = g_strdup(mms_store_file(service->identity,
 						request->data_path));
 
@@ -769,8 +771,6 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	request->data_path = g_strdup_printf("%s/.mms/%s/%s", g_get_home_dir(),
 						service->identity, msg->uuid);
-
-	request->fd = open(request->data_path, O_RDONLY);
 
 	g_queue_push_tail(service->request_queue, request);
 
@@ -1046,10 +1046,11 @@ static struct mms_request *build_notify_resp_ind(struct mms_service *service,
 
 	close(notify_request->fd);
 
+	notify_request->fd = -1;
+
 	mms_message_free(ni_msg);
 
 	if (result == FALSE) {
-		close(notify_request->fd);
 		unlink(notify_request->data_path);
 		mms_request_destroy(notify_request);
 
@@ -1544,7 +1545,7 @@ int mms_message_register(struct mms_service *service,
 		mms_error("Failed to register message interface");
 		g_free(msg->path);
 		msg->path = NULL;
-		return -EIO;;
+		return -EIO;
 	}
 
 	g_hash_table_replace(service->messages, msg->path, msg);
@@ -1775,14 +1776,6 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	struct mms_service *service;
 	const guint8 *chunk;
 
-	if (request->data != NULL) {
-		munmap(request->data, request->data_size);
-
-		request->data = NULL;
-
-		request->data_size = 0;
-	}
-
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
 		goto error;
 
@@ -1827,45 +1820,35 @@ complete:
 	return FALSE;
 }
 
-static gboolean web_post_cb(const guint8 **data, gsize *length,
-							gpointer user_data)
+static gboolean web_post_result_cb(GWebResult *result, gpointer user_data)
 {
-	struct mms_request *request = user_data;
+	struct mms_request *req = user_data;
 
-	*data = request->data + request->offset;
+	if (req->fd == -1) {
+		if (req->type == MMS_REQUEST_TYPE_POST_TMP)
+			unlink(req->data_path);
 
-	if (request->offset + CHUNK_SIZE > request->data_size)
-		*length = request->data_size - request->offset;
-	else
-		*length = CHUNK_SIZE;
+		DBG("Send <%s> complete", request->data_path);
 
-	request->offset += *length;
+		/* post complete, prepare for response reception */
 
-	if (request->offset < request->data_size)
-		return TRUE;
+		g_free(req->data_path);
 
-	/* data transfer complete */
-
-	if (request->type == MMS_REQUEST_TYPE_POST_TMP)
-		unlink(request->data_path);
-
-	g_free(request->data_path);
-
-	request->data_path = g_strdup_printf("%s/.mms/post-rsp.XXXXXX.mms",
+		req->data_path = g_strdup_printf("%s/.mms/post-rsp.XXXXXX.mms",
 							g_get_home_dir());
 
-	request->fd = g_mkstemp_full(request->data_path,
-					O_WRONLY | O_CREAT | O_TRUNC,
+		req->fd = g_mkstemp_full(req->data_path,
+						O_WRONLY | O_CREAT | O_TRUNC,
 							S_IWUSR | S_IRUSR);
+	}
 
-	return FALSE;
+	return web_get_cb(result, user_data);
 }
 
 static guint process_request(struct mms_request *request)
 {
 	struct mms_service *service = request->service;
 	guint id;
-	struct stat status;
 
 	if (request->data_path == NULL)
 		return 0;
@@ -1883,32 +1866,12 @@ static guint process_request(struct mms_request *request)
 
 	case MMS_REQUEST_TYPE_POST:
 	case MMS_REQUEST_TYPE_POST_TMP:
-		if (g_stat(request->data_path, &status) != 0) {
-			close(request->fd);
+		id = g_web_request_post_file(service->web, service->mmsc,
+						DEFAULT_CONTENT_TYPE,
+						request->data_path,
+						web_post_result_cb, request);
+		if (id == 0)
 			break;
-		}
-
-		request->data_size = status.st_size;
-
-		request->data = mmap(NULL, request->data_size, PROT_READ,
-						MAP_SHARED, request->fd, 0);
-
-		close(request->fd);
-
-		if (request->data == MAP_FAILED) {
-			g_printerr("Failed to mmap %s\n", request->data_path);
-			break;
-		}
-
-		request->offset = 0;
-
-		id = g_web_request_post(service->web, service->mmsc,
-					DEFAULT_CONTENT_TYPE, web_post_cb,
-					web_get_cb, request);
-		if (id == 0) {
-			munmap(request->data, request->data_size);
-			break;
-		}
 
 		return id;
 	}
