@@ -1828,7 +1828,7 @@ static gboolean web_post_result_cb(GWebResult *result, gpointer user_data)
 		if (req->type == MMS_REQUEST_TYPE_POST_TMP)
 			unlink(req->data_path);
 
-		DBG("Send <%s> complete", request->data_path);
+		DBG("Send <%s> complete", req->data_path);
 
 		/* post complete, prepare for response reception */
 
