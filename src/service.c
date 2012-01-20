@@ -1735,6 +1735,8 @@ static void result_request_retrieve_conf(struct mms_request *request)
 
 		mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
+		msg->transaction_id = g_strdup(request->msg->transaction_id);
+
 		notify_request = build_notify_resp_ind(service,
 					MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED,
 					msg);
