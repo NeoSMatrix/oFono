@@ -1754,8 +1754,6 @@ static void result_request_retrieve_conf(struct mms_request *request)
 	if (notify_request == NULL)
 		goto error;
 
-	notify_request->fd = open(notify_request->data_path, O_RDONLY);
-
 	g_queue_push_tail(service->request_queue, notify_request);
 	activate_bearer(service);
 
