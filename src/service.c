@@ -1042,6 +1042,9 @@ static struct mms_request *build_notify_resp_ind(struct mms_service *service,
 		return NULL;
 	}
 
+	if (status == MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED)
+		notify_request->msg = NULL;
+
 	result = mms_message_encode(ni_msg, notify_request->fd);
 
 	close(notify_request->fd);
@@ -1723,6 +1726,8 @@ static void result_request_retrieve_conf(struct mms_request *request)
 
 	decode_success = mms_message_decode(pdu, len, msg);
 
+	msg->transaction_id = g_strdup(request->msg->transaction_id);
+
 	if (decode_success == TRUE) {
 		msg->uuid = g_strdup(uuid);
 
@@ -1735,8 +1740,6 @@ static void result_request_retrieve_conf(struct mms_request *request)
 
 		mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
-		msg->transaction_id = g_strdup(request->msg->transaction_id);
-
 		notify_request = build_notify_resp_ind(service,
 					MMS_MESSAGE_NOTIFY_STATUS_RETRIEVED,
 					msg);
@@ -1744,8 +1747,7 @@ static void result_request_retrieve_conf(struct mms_request *request)
 		mms_error("Failed to decode %s", request->data_path);
 
 		notify_request = build_notify_resp_ind(service,
-				MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED,
-				NULL);
+				MMS_MESSAGE_NOTIFY_STATUS_UNRECOGNISED, msg);
 	}
 
 	/* Remove notify.ind pdu */
