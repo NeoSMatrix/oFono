@@ -1300,6 +1300,12 @@ static void append_smil(DBusMessageIter *dict, const char *path,
 	g_free(smil);
 }
 
+static inline void check_null_content_id(struct mms_attachment *attachment)
+{
+	if (attachment->content_id == NULL)
+		attachment->content_id = g_strdup("");
+}
+
 static void append_msg_attachments(DBusMessageIter *dict, const char *path,
 					struct mms_message *msg)
 {
@@ -1324,6 +1330,8 @@ static void append_msg_attachments(DBusMessageIter *dict, const char *path,
 	smil = NULL;
 	for (part = msg->attachments; part != NULL;
 					part = g_slist_next(part)) {
+		check_null_content_id(part->data);
+
 		if (mms_attachment_is_smil(part->data))
 			smil = part->data;
 		else
