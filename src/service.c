@@ -609,7 +609,12 @@ static void result_request_send_conf(struct mms_request *request)
 
 	munmap(pdu, len);
 
-	uuid = mms_store_file(service->identity, request->data_path);
+	unlink(request->data_path);
+
+	if (request->msg == NULL)
+		goto free_msg;
+
+	uuid = request->msg->uuid;
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
@@ -737,8 +742,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	}
 
 	request = create_request(MMS_REQUEST_TYPE_POST,
-				result_request_send_conf, NULL, service,
-				NULL);
+				result_request_send_conf, NULL, service, msg);
 	if (request == NULL) {
 		release_attachement_data(msg->attachments);
 		mms_message_free(msg);
