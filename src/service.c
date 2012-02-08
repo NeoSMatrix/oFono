@@ -748,6 +748,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	if (mms_message_encode(msg, request->fd) == FALSE) {
 		release_attachement_data(msg->attachments);
 		mms_request_destroy(request);
+
 		return __mms_error_trans_failure(dbus_msg);
 	}
 
