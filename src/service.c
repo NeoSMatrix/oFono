@@ -707,6 +707,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	struct mms_message *msg;
 	struct mms_service *service = data;
 	struct mms_request *request;
+	GKeyFile *meta;
 
 	msg = g_new0(struct mms_message, 1);
 	if (msg == NULL)
@@ -758,6 +759,18 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	msg->uuid = g_strdup(mms_store_file(service->identity,
 						request->data_path));
+
+	meta = mms_store_meta_open(service->identity, msg->uuid);
+	if (meta == NULL) {
+		release_attachement_data(msg->attachments);
+		mms_request_destroy(request);
+
+		return __mms_error_trans_failure(dbus_msg);
+	}
+
+	g_key_file_set_string(meta, "info", "state", "draft");
+
+	mms_store_meta_close(service->identity, msg->uuid, meta, TRUE);
 
 	if (mms_message_register(service, msg) < 0) {
 		release_attachement_data(msg->attachments);
