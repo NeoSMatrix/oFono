@@ -730,6 +730,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 	msg->transaction_id = create_transaction_id();
 	if (msg->transaction_id == NULL) {
 		release_attachement_data(msg->attachments);
+		mms_message_free(msg);
+
 		return __mms_error_trans_failure(dbus_msg);
 	}
 
@@ -738,6 +740,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 				NULL);
 	if (request == NULL) {
 		release_attachement_data(msg->attachments);
+		mms_message_free(msg);
+
 		return __mms_error_trans_failure(dbus_msg);
 	}
 
