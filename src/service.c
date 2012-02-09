@@ -590,6 +590,7 @@ static void result_request_send_conf(struct mms_request *request)
 	GKeyFile *meta;
 	void *pdu;
 	size_t len;
+	char *path;
 
 	if (request->status != 200)
 		return;
@@ -626,12 +627,12 @@ static void result_request_send_conf(struct mms_request *request)
 
 	mms_debug("response status : %d", msg->sc.rsp_status);
 
-	msg->uuid = g_strdup(uuid);
+	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity,	uuid);
 
-	if (mms_message_register(service, msg) != 0)
-		goto free_msg;
+	emit_msg_status_changed(path, "sent");
 
-	emit_message_added(service, msg);
+	g_free(path);
+
 	return;
 
 free_msg:
