@@ -599,44 +599,47 @@ static void result_request_send_conf(struct mms_request *request)
 	if (msg == NULL)
 		return;
 
-	if (mmap_file(request->data_path, &pdu, &len) == FALSE)
-		goto free_msg;
+	if (mmap_file(request->data_path, &pdu, &len) == FALSE) {
+		mms_message_free(msg);
+		return;
+	}
 
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode pdu %s", request->data_path);
+
 		munmap(pdu, len);
-		goto free_msg;
+
+		mms_message_free(msg);
+
+		return;
 	}
+
+	mms_debug("response status : %d", msg->sc.rsp_status);
+
+	mms_message_free(msg);
 
 	munmap(pdu, len);
 
 	unlink(request->data_path);
 
 	if (request->msg == NULL)
-		goto free_msg;
+		return;
 
 	uuid = request->msg->uuid;
 
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
-		goto free_msg;
+		return;
 
 	g_key_file_set_string(meta, "info", "state", "sent");
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
-
-	mms_debug("response status : %d", msg->sc.rsp_status);
 
 	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity,	uuid);
 
 	emit_msg_status_changed(path, "sent");
 
 	g_free(path);
-
-	return;
-
-free_msg:
-	mms_message_free(msg);
 }
 
 static void append_message(const char *path, const struct mms_service *service,
