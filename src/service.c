@@ -1723,14 +1723,14 @@ static void result_request_notify_resp(struct mms_request *request)
 	emit_message_added(request->service, msg);
 
 	meta = mms_store_meta_open(request->service->identity,
-				   msg->uuid);
+					msg->uuid);
 	if (meta == NULL)
 		return;
 
 	g_key_file_set_string(meta, "info", "state", "received");
 
 	mms_store_meta_close(request->service->identity,
-			     msg->uuid, meta, TRUE);
+				msg->uuid, meta, TRUE);
 }
 
 static void result_request_retrieve_conf(struct mms_request *request)
