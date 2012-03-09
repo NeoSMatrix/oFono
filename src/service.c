@@ -115,9 +115,6 @@ static void mms_request_destroy(struct mms_request *request)
 {
 	g_free(request->data_path);
 	g_free(request->location);
-	if (request->msg != NULL)
-		mms_message_free(request->msg);
-
 	g_free(request);
 }
 
@@ -756,6 +753,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	if (mms_message_encode(msg, request->fd) == FALSE) {
 		release_attachement_data(msg->attachments);
+		mms_message_free(msg);
+
 		mms_request_destroy(request);
 
 		return __mms_error_trans_failure(dbus_msg);
@@ -771,6 +770,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 	meta = mms_store_meta_open(service->identity, msg->uuid);
 	if (meta == NULL) {
 		release_attachement_data(msg->attachments);
+		mms_message_free(msg);
+
 		mms_request_destroy(request);
 
 		return __mms_error_trans_failure(dbus_msg);
