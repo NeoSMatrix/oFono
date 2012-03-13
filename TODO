@@ -19,42 +19,7 @@ Background
 MMS Submission
 ==============
 
-- Add HTTP GWeb POST request support.
-  This feature integration should be consistent with what has already be done
-  for the HTTP GWeb GET request support.
-
-  Priority: High
-  Complexity: C2
-  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
-
-- Add MMS M-Send.Req PDU encoding support.
-  The M-Send.Req PDU has to be encoded from the data retrieved in the
-  mms_message structure into a temporary file. The encoding has to be
-  consistent with the encoding of the already existing M-NotifyResp.Ind PDU
-  encoding implementation.
-
-  Priority: High
-  Complexity: C2
-  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
-
 - Add MMS submit support.
-  Upon the reception of a Dbus Service: SendMessage Request, the mms_message
-  structure is filled with the information extracted from the D-Bus request.
-  A new D-Bus MMS message object is registered, and a Dbus Service Signal
-  “MessageAdded” is emitted. This implementation needs to be completed with the
-  the encoding of a M-Send-Req PDU (requires to generate a transaction id),
-  its addition to the store and the creation of a new entry in the META file
-  (status: draft). A HTTP POST request must be initiated to send the M-Send-Req
-  PDU to the MMSC. The HTTP POST request callback has to be implemented to
-  process the request result.
-  If the HTTP POST request is completed successfully, the HTTP POST response
-  result file (M-Send.Conf) PDU must be decoded to get the request result
-  (a message id should also be provided in this case, and may be stored in the
-  META information), if the submit request has been accepted by the MMSC the
-  META file entry for the M-Send-Req must be updated (status: draft -> sent),
-  the MMS message object status property changed (status: draft -> sent) and
-  the Dbus Service: SendMessage Request asynchronous reply sent back to the
-  caller.
   In case of error (HTTP communication error, MMSC rejection of the submit
   request), the SendMessage Request asynchronous reply should also be sent with
   the appropriate DBus error status (see __mms_error_XXXX).
@@ -69,23 +34,6 @@ MMS Reception
 =============
 
 - Add MMS Automatic Retrieval support.
-  Add the M-Notify.Ind PDU entry to the META file (status: notify.ind).
-  Initiate a HTTP GET Request with the "Content Location" URI provided in the
-  M-Notify.Ind PDU.
-  Implement the HTTP GET request callback to process the request result.
-  if the the HTTP GET operation is completed successfully, the retrieved
-  M-Retrieve.Conf PDU file has to be parsed and added to the store.
-  META file has to be updated too: the M-Notify.Ind PDU entry has to be removed
-  and a new entry for the M-Retrieve.Conf PDU has to be created
-  (status: retrieve.conf).
-  In order to complete the transaction a M-NotifyResp.ind PDU must be encoded
-  with the "retrieved" status and the M-Notify.Ind PDU transaction ID.
-  This PDU has to be temporarily stored.
-  A HTTP POST request must be initiated to send the M-NotifyResp.ind PDU to the
-  MMSC. If the HTTP POST request is completed successfully the META file entry
-  for the M-Retrieve.Conf PDU has to be updated (status: retrieve.conf ->
-  received), a DBus Message object has to be registered (see 
-  mms_message_register()) and the Dbus Service Signal “MessageAdded” emitted.
   Error cases should handled and reported to the application layer.
 
   Priority: High
@@ -111,13 +59,6 @@ MMS Storage
 
 D-Bus API
 =========
-
-- Add the "org.ofono.mms.Message" interface implementation.
-  The D-Bus Message API documentation is available under /doc/message-api.txt.
-
-  Priority: High
-  Complexity: C2
-  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
 
 - Add the "org.ofono.mms.Service" interface "GetConversation" method 
   implementation.
