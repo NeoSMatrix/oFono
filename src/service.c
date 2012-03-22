@@ -875,15 +875,12 @@ struct mms_service *mms_service_ref(struct mms_service *service)
 	return service;
 }
 
-static gboolean unregister_message(gpointer key, gpointer value,
-							gpointer user_data)
+static void unregister_message(gpointer key, gpointer value, gpointer user_data)
 {
 	struct mms_service *service = user_data;
-	char *uuid = value;
+	struct mms_message *msg = value;
 
-	mms_message_unregister(service, uuid);
-
-	return TRUE;
+	mms_message_unregister(service, msg->path);
 }
 
 static void destroy_message_table(struct mms_service *service)
@@ -897,8 +894,7 @@ static void destroy_message_table(struct mms_service *service)
 	 * This step is required because we need access to mms_service when
 	 * unregistering the message object.
 	 */
-	g_hash_table_foreach_remove(service->messages, unregister_message,
-								service);
+	g_hash_table_foreach(service->messages, unregister_message, service);
 
 	g_hash_table_destroy(service->messages);
 	service->messages = NULL;
