@@ -1607,9 +1607,9 @@ int mms_message_unregister(const struct mms_service *service,
 		return -EIO;
 	}
 
-	g_hash_table_remove(service->messages, msg_path);
-
 	DBG("message unregistered %s", msg_path);
+
+	g_hash_table_remove(service->messages, msg_path);
 
 	return 0;
 }
