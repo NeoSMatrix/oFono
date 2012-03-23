@@ -1118,6 +1118,11 @@ static void process_message_on_start(struct mms_service *service,
 			if (request == NULL)
 				goto register_sr;
 
+			close(request->fd);
+			request->fd = -1;
+
+			unlink(request->data_path);
+			g_free(request->data_path);
 			request->data_path = mms_store_get_path(service_id,
 									uuid);
 		} else
