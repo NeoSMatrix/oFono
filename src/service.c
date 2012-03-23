@@ -1125,6 +1125,8 @@ static void process_message_on_start(struct mms_service *service,
 			g_free(request->data_path);
 			request->data_path = mms_store_get_path(service_id,
 									uuid);
+
+			request->msg = msg;
 		} else
 			request = NULL;
 register_sr:
