@@ -733,30 +733,16 @@ static DBusMessage *send_message(DBusConnection *conn,
 	}
 
 	msg->transaction_id = create_transaction_id();
-	if (msg->transaction_id == NULL) {
-		release_attachement_data(msg->attachments);
-		mms_message_free(msg);
-
-		return __mms_error_trans_failure(dbus_msg);
-	}
+	if (msg->transaction_id == NULL)
+		goto release_msg;
 
 	request = create_request(MMS_REQUEST_TYPE_POST,
 				result_request_send_conf, NULL, service, msg);
-	if (request == NULL) {
-		release_attachement_data(msg->attachments);
-		mms_message_free(msg);
+	if (request == NULL)
+		goto release_msg;
 
-		return __mms_error_trans_failure(dbus_msg);
-	}
-
-	if (mms_message_encode(msg, request->fd) == FALSE) {
-		release_attachement_data(msg->attachments);
-		mms_message_free(msg);
-
-		mms_request_destroy(request);
-
-		return __mms_error_trans_failure(dbus_msg);
-	}
+	if (mms_message_encode(msg, request->fd) == FALSE)
+		goto release_request;
 
 	close(request->fd);
 
@@ -766,27 +752,15 @@ static DBusMessage *send_message(DBusConnection *conn,
 						request->data_path));
 
 	meta = mms_store_meta_open(service->identity, msg->uuid);
-	if (meta == NULL) {
-		release_attachement_data(msg->attachments);
-		mms_message_free(msg);
-
-		mms_request_destroy(request);
-
-		return __mms_error_trans_failure(dbus_msg);
-	}
+	if (meta == NULL)
+		goto release_request;
 
 	g_key_file_set_string(meta, "info", "state", "draft");
 
 	mms_store_meta_close(service->identity, msg->uuid, meta, TRUE);
 
-	if (mms_message_register(service, msg) < 0) {
-		release_attachement_data(msg->attachments);
-		mms_message_free(msg);
-
-		mms_request_destroy(request);
-
-		return __mms_error_trans_failure(dbus_msg);
-	}
+	if (mms_message_register(service, msg) < 0)
+		goto release_request;
 
 	emit_message_added(service, msg);
 
@@ -811,6 +785,15 @@ static DBusMessage *send_message(DBusConnection *conn,
 								&msg->path);
 
 	return reply;
+
+release_request:
+	mms_request_destroy(request);
+
+release_msg:
+	release_attachement_data(msg->attachments);
+	mms_message_free(msg);
+
+	return __mms_error_trans_failure(dbus_msg);
 }
 
 static GDBusMethodTable service_methods[] = {
