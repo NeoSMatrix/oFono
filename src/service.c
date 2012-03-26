@@ -750,6 +750,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	msg->uuid = g_strdup(mms_store_file(service->identity,
 						request->data_path));
+	if (msg->uuid == NULL)
+		goto release_request;
 
 	meta = mms_store_meta_open(service->identity, msg->uuid);
 	if (meta == NULL)
