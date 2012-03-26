@@ -753,6 +753,11 @@ static DBusMessage *send_message(DBusConnection *conn,
 	if (msg->uuid == NULL)
 		goto release_request;
 
+	g_free(request->data_path);
+
+	request->data_path = g_strdup_printf("%s/.mms/%s/%s", g_get_home_dir(),
+						service->identity, msg->uuid);
+
 	meta = mms_store_meta_open(service->identity, msg->uuid);
 	if (meta == NULL)
 		goto release_request;
@@ -767,11 +772,6 @@ static DBusMessage *send_message(DBusConnection *conn,
 	emit_message_added(service, msg);
 
 	release_attachement_data(msg->attachments);
-
-	g_free(request->data_path);
-
-	request->data_path = g_strdup_printf("%s/.mms/%s/%s", g_get_home_dir(),
-						service->identity, msg->uuid);
 
 	g_queue_push_tail(service->request_queue, request);
 
@@ -789,6 +789,7 @@ static DBusMessage *send_message(DBusConnection *conn,
 	return reply;
 
 release_request:
+	unlink(request->data_path);
 	mms_request_destroy(request);
 
 release_msg:
