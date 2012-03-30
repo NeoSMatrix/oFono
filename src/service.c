@@ -998,9 +998,11 @@ static gboolean load_message_from_store(const char *service_id,
 		else
 			msg->rc.status = MMS_MESSAGE_STATUS_RECEIVED;
 	} else if (strcmp(state, "downloaded") == 0
-			&& msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF)
+			&& msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF) {
 		msg->rc.status = MMS_MESSAGE_STATUS_DOWNLOADED;
-	else if (strcmp(state, "sent") == 0
+		if (msg->transaction_id == NULL)
+			msg->transaction_id = "";
+	} else if (strcmp(state, "sent") == 0
 			&& msg->type == MMS_MESSAGE_TYPE_SEND_REQ)
 		msg->sr.status = MMS_MESSAGE_STATUS_SENT;
 	else if (strcmp(state, "draft") == 0
