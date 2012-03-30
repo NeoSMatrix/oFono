@@ -43,20 +43,6 @@ MMS Reception
   support.
   Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
 
-MMS Storage
-===========
-
-- Add pending/incompleted transactions recovery on mmsd restart.
-  In the case of a restart of the mmsd, all the incomplete/pending MMS
-  transactions identified thanks to the META file information
-  (status key value) should be re-processed (i.e.: added to the mms_service 
-  structure request_queue).
-
-  Priority: Medium
-  Complexity: C2
-  Depends: META file support, MMS submit support.
-  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
-
 D-Bus API
 =========
 
