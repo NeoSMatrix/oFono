@@ -1014,6 +1014,7 @@ static int connect_session_transport(struct web_session *session)
 	if (session->web->index > 0) {
 		if (bind_socket(sk, session->web->index,
 					session->addr->ai_family) < 0) {
+			debug(session->web, "bind() %s", strerror(errno));
 			close(sk);
 			return -EIO;
 		}
@@ -1028,6 +1029,7 @@ static int connect_session_transport(struct web_session *session)
 	}
 
 	if (session->transport_channel == NULL) {
+		debug(session->web, "channel missing");
 		close(sk);
 		return -ENOMEM;
 	}
@@ -1044,6 +1046,7 @@ static int connect_session_transport(struct web_session *session)
 	if (connect(sk, session->addr->ai_addr,
 			session->addr->ai_addrlen) < 0) {
 		if (errno != EINPROGRESS) {
+			debug(session->web, "connect() %s", strerror(errno));
 			close(sk);
 			return -EIO;
 		}
