@@ -1806,8 +1806,10 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	struct mms_service *service;
 	const guint8 *chunk;
 
-	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE)
+	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE) {
+		mms_error("Fail to get data chunk");
 		goto error;
+	}
 
 	if (chunk_size == 0) {
 		close(request->fd);
@@ -1905,6 +1907,8 @@ static guint process_request(struct mms_request *request)
 
 		return id;
 	}
+
+	mms_error("Cannot process request (request type: %d)", request->type);
 
 	unlink(request->data_path);
 
@@ -2022,6 +2026,8 @@ error:
 
 out:
 	mms_message_free(msg);
+
+	mms_error("Failed to handle incoming notification");
 }
 
 void mms_service_bearer_notify(struct mms_service *service, mms_bool_t active,
