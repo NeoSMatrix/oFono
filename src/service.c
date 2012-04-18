@@ -55,6 +55,7 @@
 #define CONTENT_TYPE_APP_SMIL "Content-Type: \"application/smil\";charset=utf-8"
 
 #define MAX_ATTACHMENTS_NUMBER 25
+#define MAX_ATTEMPTS 3
 
 #define uninitialized_var(x) x = x
 
@@ -98,6 +99,7 @@ struct mms_request {
 	gsize data_size;
 	int fd;
 	guint16 status;
+	guint16 attempt;
 	struct mms_service *service;
 	mms_request_result_cb_t result_cb;
 	struct mms_message *msg;
@@ -525,6 +527,8 @@ static struct mms_request *create_request(enum mms_request_type type,
 	request->msg = msg;
 
 	request->status = 0;
+
+	request->attempt = 0;
 
 	return request;
 }
