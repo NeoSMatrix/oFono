@@ -961,6 +961,7 @@ static gboolean load_message_from_store(const char *service_id,
 	gboolean read_status;
 	char *data_path = NULL;
 	gboolean success = FALSE;
+	gboolean tainted = FALSE;
 	void *pdu;
 	size_t len;
 
@@ -984,6 +985,7 @@ static gboolean load_message_from_store(const char *service_id,
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
 		mms_error("Failed to decode %s", data_path);
 		munmap(pdu, len);
+		tainted = TRUE;
 		goto out;
 	}
 
@@ -1018,6 +1020,9 @@ out:
 	g_free(data_path);
 
 	mms_store_meta_close(service_id, uuid, meta, FALSE);
+
+	if (tainted == TRUE)
+		mms_store_remove(service_id, uuid);
 
 	return success;
 }
