@@ -1807,6 +1807,25 @@ exit:
 	return TRUE;
 }
 
+static gboolean mms_requeue_request(struct mms_request *request)
+{
+	request->attempt += 1;
+
+	if (request->attempt == MAX_ATTEMPTS)
+		return FALSE;
+
+	if (request->type == MMS_REQUEST_TYPE_GET) {
+		request->fd = open(request->data_path, O_WRONLY | O_TRUNC,
+							S_IWUSR | S_IRUSR);
+		if (request->fd < 0)
+			return FALSE;
+	}
+
+	g_queue_push_tail(request->service->request_queue, request);
+
+	return TRUE;
+}
+
 static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 {
 	gsize written;
@@ -1847,7 +1866,12 @@ complete:
 	else {
 		mms_error("Fail to get data (http status = %03u)",
 							request->status);
-		unlink(request->data_path);
+		if (mms_requeue_request(request) == TRUE)
+			mms_error("retry later");
+		else {
+			unlink(request->data_path);
+			mms_request_destroy(request);
+		}
 	}
 
 	request->service->current_request_id = 0;
