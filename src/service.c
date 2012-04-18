@@ -1803,7 +1803,6 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	gsize written;
 	gsize chunk_size;
 	struct mms_request *request = user_data;
-	struct mms_service *service;
 	const guint8 *chunk;
 
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE) {
@@ -1838,16 +1837,14 @@ error:
 	unlink(request->data_path);
 
 complete:
-	service = request->service;
-
 	if (request->result_cb != NULL)
 		request->result_cb(request);
 
 	mms_request_destroy(request);
 
-	service->current_request_id = 0;
+	request->service->current_request_id = 0;
 
-	process_request_queue(service);
+	process_request_queue(request->service);
 
 	return FALSE;
 }
