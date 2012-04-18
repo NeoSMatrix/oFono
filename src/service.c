@@ -1815,8 +1815,6 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	}
 
 	if (chunk_size == 0) {
-		close(request->fd);
-
 		request->status = g_web_result_get_status(result);
 
 		DBG("status: %03u", request->status);
@@ -1837,10 +1835,11 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 	return TRUE;
 
 error:
-	close(request->fd);
 	unlink(request->data_path);
 
 complete:
+	close(request->fd);
+
 	if (request->result_cb != NULL)
 		request->result_cb(request);
 
