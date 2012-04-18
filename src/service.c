@@ -1816,7 +1816,7 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 	if (g_web_result_get_chunk(result, &chunk, &chunk_size) == FALSE) {
 		mms_error("Fail to get data chunk");
-		goto error;
+		goto complete;
 	}
 
 	if (chunk_size == 0) {
@@ -1834,21 +1834,21 @@ static gboolean web_get_cb(GWebResult *result, gpointer user_data)
 
 	if (written != chunk_size) {
 		mms_error("only %zd/%zd bytes written\n", written, chunk_size);
-		goto error;
+		goto complete;
 	}
 
 	return TRUE;
 
-error:
-	unlink(request->data_path);
-
 complete:
 	close(request->fd);
 
-	if (request->result_cb != NULL)
-		request->result_cb(request);
-
-	mms_request_destroy(request);
+	if (request->result_cb == NULL || request->result_cb(request) == TRUE)
+		mms_request_destroy(request);
+	else {
+		mms_error("Fail to get data (http status = %03u)",
+							request->status);
+		unlink(request->data_path);
+	}
 
 	request->service->current_request_id = 0;
 
