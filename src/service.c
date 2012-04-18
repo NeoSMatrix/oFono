@@ -1662,17 +1662,22 @@ int mms_service_set_bearer_handler(struct mms_service *service,
 	return 0;
 }
 
+static inline gboolean bearer_is_active(struct mms_service *service)
+{
+	if (service->bearer_setup == TRUE)
+		return FALSE;
+
+	if (service->bearer_handler == NULL)
+		return FALSE;
+
+	return service->bearer_active;
+}
+
 static void deactivate_bearer(struct mms_service *service)
 {
 	DBG("service %p", service);
 
-	if (service->bearer_setup == TRUE)
-		return;
-
-	if (service->bearer_active == FALSE)
-		return;
-
-	if (service->bearer_handler == NULL)
+	if (bearer_is_active(service) == FALSE)
 		return;
 
 	DBG("service %p", service);
@@ -1961,6 +1966,9 @@ static void process_request_queue(struct mms_service *service)
 		return;
 
 	while (1) {
+		if (bearer_is_active(service) == FALSE)
+			return;
+
 		request = g_queue_pop_head(service->request_queue);
 		if (request == NULL)
 			break;
