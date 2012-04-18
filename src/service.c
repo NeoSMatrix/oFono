@@ -1913,6 +1913,8 @@ static guint process_request(struct mms_request *request)
 
 	unlink(request->data_path);
 
+	mms_request_destroy(request);
+
 	return 0;
 }
 
@@ -1940,8 +1942,6 @@ static void process_request_queue(struct mms_service *service)
 		service->current_request_id = process_request(request);
 		if (service->current_request_id > 0)
 			return;
-
-		mms_request_destroy(request);
 	}
 
 	service->bearer_timeout = g_timeout_add_seconds(BEARER_IDLE_TIMEOUT,
