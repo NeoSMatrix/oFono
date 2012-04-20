@@ -134,6 +134,7 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 	struct mms_service *service = user_data;
 	struct mms_message *mms;
 	const char *path;
+	char *uuid;
 
 	path = dbus_message_get_path(msg);
 
@@ -143,10 +144,14 @@ static DBusMessage *msg_delete(DBusConnection *conn,
 	if (mms == NULL)
 		return __mms_error_invalid_args(msg);
 
+	uuid = g_strdup(mms->uuid);
+
 	if (mms_message_unregister(service, path) < 0)
 		return __mms_error_invalid_args(msg);
 
-	mms_store_remove(service->identity, mms->uuid);
+	mms_store_remove(service->identity, uuid);
+
+	g_free(uuid);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
