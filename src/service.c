@@ -1502,7 +1502,7 @@ static void append_sr_msg_properties(DBusMessageIter *dict,
 					struct mms_message *msg)
 {
 	const char *date = time_to_str(&msg->rc.date);
-	const char *status = "draft";
+	const char *status = mms_message_status_get_string(msg->sr.status);
 
 	mms_dbus_dict_append_basic(dict, "Status",
 					DBUS_TYPE_STRING, &status);
