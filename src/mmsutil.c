@@ -1661,3 +1661,21 @@ gboolean mms_message_encode(struct mms_message *msg, int fd)
 
 	return FALSE;
 }
+
+const char *mms_message_status_get_string(enum mms_message_status status)
+{
+	switch (status) {
+	case MMS_MESSAGE_STATUS_DOWNLOADED:
+		return "downloaded";
+	case MMS_MESSAGE_STATUS_RECEIVED:
+		return "received";
+	case MMS_MESSAGE_STATUS_READ:
+		return "read";
+	case MMS_MESSAGE_STATUS_SENT:
+		return "sent";
+	case MMS_MESSAGE_STATUS_DRAFT:
+		return "draft";
+	}
+
+	return NULL;
+}
