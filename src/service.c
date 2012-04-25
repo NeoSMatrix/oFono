@@ -690,6 +690,26 @@ static DBusMessage *get_messages(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *get_conversation(DBusConnection *conn,
+					DBusMessage *dbus_msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+
+	reply = dbus_message_new_method_return(dbus_msg);
+	if (reply == NULL)
+		return __mms_error_trans_failure(dbus_msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+							"(oa{sv})", &array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
 static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
 {
 	if (g_str_has_prefix(part->content_type, "application/smil"))
@@ -813,6 +833,7 @@ release_msg:
 static GDBusMethodTable service_methods[] = {
 	{ "SendMessage", "assa(sss)", "o", send_message },
 	{ "GetMessages", "", "a(oa{sv})", get_messages },
+	{ "GetConversation", "su", "a(oa{sv})", get_conversation },
 	{ }
 };
 
