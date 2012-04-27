@@ -596,16 +596,23 @@ static gboolean result_request_send_conf(struct mms_request *request)
 	size_t len;
 	char *path;
 
-	if (request->status != 200)
+	if (request->msg == NULL)
 		return FALSE;
+
+	uuid = request->msg->uuid;
+
+	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity,	uuid);
+
+	if (request->status != 200)
+		goto error;
 
 	msg = g_try_new0(struct mms_message, 1);
 	if (msg == NULL)
-		return FALSE;
+		goto error;
 
 	if (mmap_file(request->data_path, &pdu, &len) == FALSE) {
 		mms_message_free(msg);
-		return FALSE;
+		goto error;
 	}
 
 	if (mms_message_decode(pdu, len, msg) == FALSE) {
@@ -615,7 +622,7 @@ static gboolean result_request_send_conf(struct mms_request *request)
 
 		mms_message_free(msg);
 
-		return FALSE;
+		goto error;
 	}
 
 	mms_debug("response status : %d", msg->sc.rsp_status);
@@ -626,26 +633,27 @@ static gboolean result_request_send_conf(struct mms_request *request)
 
 	unlink(request->data_path);
 
-	if (request->msg == NULL)
-		return FALSE;
-
-	uuid = request->msg->uuid;
-
 	meta = mms_store_meta_open(service->identity, uuid);
 	if (meta == NULL)
-		return FALSE;
+		goto error;
 
 	g_key_file_set_string(meta, "info", "state", "sent");
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
-
-	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity,	uuid);
 
 	emit_msg_status_changed(path, "sent");
 
 	g_free(path);
 
 	return TRUE;
+
+error:
+	if (request->attempt == MAX_ATTEMPTS)
+		emit_msg_status_changed(path, "draft");
+
+	g_free(path);
+
+	return FALSE;
 }
 
 static void append_message(const char *path, const struct mms_service *service,
