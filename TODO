@@ -30,19 +30,6 @@ MMS Submission
   "org.ofono.mms.Message" interface implementation.
   Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
 
-MMS Reception
-=============
-
-- Add MMS Automatic Retrieval support.
-  Error cases should handled and reported to the application layer.
-
-  Priority: High
-  Complexity: C4
-  Depends: META file support, MMS M-Retrieve.conf PDU decoding support,
-  "org.ofono.mms.Message" interface implementation, HTTP GWeb POST request
-  support.
-  Owner: Ronald Tessier <ronald.tessier@linux.intel.com>
-
 D-Bus API
 =========
 
