@@ -1948,7 +1948,7 @@ static guint process_request(struct mms_request *request)
 	switch (request->type) {
 	case MMS_REQUEST_TYPE_GET:
 		id = g_web_request_get(service->web, request->location,
-					web_get_cb, request);
+					web_get_cb, NULL, request);
 		if (id == 0) {
 			close(request->fd);
 			break;
