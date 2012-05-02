@@ -16,20 +16,6 @@ Background
   once the task is better understood.
 
 
-MMS Submission
-==============
-
-- Add MMS submit support.
-  In case of error (HTTP communication error, MMSC rejection of the submit
-  request), the SendMessage Request asynchronous reply should also be sent with
-  the appropriate DBus error status (see __mms_error_XXXX).
-
-  Priority: High
-  Complexity: C4
-  Depends: MMS M-Send.Req PDU encoding support, META file support,
-  "org.ofono.mms.Message" interface implementation.
-  Owner: Sebastien Bianti <sebastien.bianti@linux.intel.com>
-
 D-Bus API
 =========
 
