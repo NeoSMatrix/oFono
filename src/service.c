@@ -703,6 +703,29 @@ static DBusMessage *get_conversation(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
+	const char *number;
+	unsigned int count;
+
+	if (dbus_message_iter_init(dbus_msg, &iter) == FALSE)
+		return __mms_error_invalid_args(dbus_msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return __mms_error_invalid_args(dbus_msg);
+
+	dbus_message_iter_get_basic(&iter, &number);
+	if (number[0] == '\0')
+		return __mms_error_invalid_args(dbus_msg);
+
+	if (valid_number_format(number) == FALSE)
+		return __mms_error_invalid_args(dbus_msg);
+
+	if (!dbus_message_iter_next(&iter))
+		return __mms_error_invalid_args(dbus_msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32)
+		return __mms_error_invalid_args(dbus_msg);
+
+	dbus_message_iter_get_basic(&iter, &count);
 
 	reply = dbus_message_new_method_return(dbus_msg);
 	if (reply == NULL)
