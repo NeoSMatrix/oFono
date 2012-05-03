@@ -24,11 +24,17 @@ Methods		array{object,dict} GetMessages()
 			that are part of a conversation between the service
 			entity and the number provided.
 
+			The number parameter contains digits to look for
+			(i.e.: n last digits of the phone number), only messages
+			with a recipient which ends with the given number will
+			be part of the GetConversation result.
+
 			The count parameter can either be 0 for unlimited
 			messages in the conversation or limit the conversation
 			to count last messages.
 
 			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.TransientFailure
 
 		object SendMessage(array{string} recipients, string smil,
 					array{string id, string content-type,
