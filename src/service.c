@@ -698,6 +698,31 @@ static DBusMessage *get_messages(DBusConnection *conn,
 	return reply;
 }
 
+static gint fill_conversation_sort(gconstpointer a, gconstpointer b)
+{
+	const struct mms_message *msg1 = a;
+	const struct mms_message *msg2 = b;
+	time_t date1, date2;
+
+	if (msg1->type == MMS_MESSAGE_TYPE_SEND_REQ)
+		date1 = msg1->sr.date;
+	else
+		date1 = msg1->rc.date;
+
+	if (msg2->type == MMS_MESSAGE_TYPE_SEND_REQ)
+		date2 = msg2->sr.date;
+	else
+		date2 = msg2->rc.date;
+
+	if (date1 > date2)
+		return 1;
+
+	if (date1 < date2)
+		return -1;
+
+	return 0;
+}
+
 static gboolean is_recipient(const char *recipients, const char *number)
 {
 	const char *subrecpts, *subnum;
@@ -766,7 +791,8 @@ static GList *fill_conversation(const struct mms_service *service,
 			continue;
 
 		if (is_recipient(recipients, number) == TRUE)
-			conversation = g_list_prepend(conversation, value);
+			conversation = g_list_insert_sorted(conversation, value,
+							fill_conversation_sort);
 	}
 
 	return conversation;
