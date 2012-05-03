@@ -698,13 +698,91 @@ static DBusMessage *get_messages(DBusConnection *conn,
 	return reply;
 }
 
+static gboolean is_recipient(const char *recipients, const char *number)
+{
+	const char *subrecpts, *subnum;
+
+	/*
+	 * Search for "number" substring in "recipients" string,
+	 * ignoring '-' and '.' which are valid chars in a phone number
+	 */
+	while (*recipients != '\0') {
+		subrecpts = recipients;
+		subnum = number;
+
+		while (*subrecpts != '\0' && *subnum != '\0') {
+			if (*subrecpts == *subnum) {
+				subrecpts++;
+				subnum++;
+			} else {
+				if (*subrecpts == '-' || *subrecpts == '.') {
+					subrecpts++;
+					continue;
+				}
+
+				if (*subnum == '-' || *subnum == '.') {
+					subnum++;
+					continue;
+				}
+
+				if (*subrecpts != *number)
+					subrecpts++;
+
+				break;
+			}
+		}
+
+		/*
+		 * Phone numbers in recipients end with /TYPE=PLMN, so the
+		 * wanted number is found if the whole string number is found
+		 * and if the matched phone number ends with the wanted number
+		 * (i.e.: "/TYPE=PLMN" must follow).
+		 */
+		if (*subnum == '\0' && *subrecpts == '/')
+			return TRUE;
+
+		recipients = subrecpts;
+	}
+
+	return FALSE;
+}
+
+static GList *fill_conversation(const struct mms_service *service,
+				GList *conversation, const char *number)
+{
+	GHashTableIter table_iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&table_iter, service->messages);
+	while (g_hash_table_iter_next(&table_iter, &key, &value)) {
+		struct mms_message *msg = value;
+		char *recipients;
+
+		if (msg->type == MMS_MESSAGE_TYPE_SEND_REQ)
+			recipients = msg->sr.to;
+		else if (msg->type == MMS_MESSAGE_TYPE_RETRIEVE_CONF)
+			recipients = msg->rc.from;
+		else
+			continue;
+
+		if (is_recipient(recipients, number) == TRUE)
+			conversation = g_list_prepend(conversation, value);
+	}
+
+	return conversation;
+}
+
 static DBusMessage *get_conversation(DBusConnection *conn,
 					DBusMessage *dbus_msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
+	const struct mms_service *service = data;
+	struct mms_message *msg;
+	GList *msg_elt = NULL;
+	GList *conversation = NULL;
 	const char *number;
-	unsigned int count;
+	unsigned int count, i;
 
 	if (dbus_message_iter_init(dbus_msg, &iter) == FALSE)
 		return __mms_error_invalid_args(dbus_msg);
@@ -736,6 +814,20 @@ static DBusMessage *get_conversation(DBusConnection *conn,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 							"(oa{sv})", &array);
 
+	conversation = fill_conversation(service, conversation, number);
+	if (conversation == NULL)
+		goto out;
+
+	i = 0;
+
+	for (msg_elt = g_list_first(conversation); msg_elt != NULL;
+					msg_elt = g_list_next(msg_elt), i++) {
+		if (count != 0 && i == count)
+			break;
+		msg = msg_elt->data;
+		append_message_entry(msg->path, service, msg, &array);
+	}
+out:
 	dbus_message_iter_close_container(&iter, &array);
 
 	return reply;
