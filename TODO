@@ -16,16 +16,6 @@ Background
   once the task is better understood.
 
 
-D-Bus API
-=========
-
-- Add the "org.ofono.mms.Service" interface "GetConversation" method 
-  implementation.
-  The D-Bus Message API documentation is available under /doc/service-api.txt.
-
-  Priority: Low
-  Complexity: C4
-
 Miscellaneous
 =============
 
