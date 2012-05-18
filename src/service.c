@@ -222,13 +222,13 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable message_methods[] = {
+static const GDBusMethodTable message_methods[] = {
 	{ "MarkRead", "", "", msg_mark_read },
 	{ "Delete",   "", "", msg_delete },
 	{ }
 };
 
-static GDBusSignalTable message_signals[] = {
+static const GDBusSignalTable message_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ }
 };
@@ -979,14 +979,14 @@ release_msg:
 	return __mms_error_trans_failure(dbus_msg);
 }
 
-static GDBusMethodTable service_methods[] = {
+static const GDBusMethodTable service_methods[] = {
 	{ "SendMessage", "assa(sss)", "o", send_message },
 	{ "GetMessages", "", "a(oa{sv})", get_messages },
 	{ "GetConversation", "su", "a(oa{sv})", get_conversation },
 	{ }
 };
 
-static GDBusSignalTable service_signals[] = {
+static const GDBusSignalTable service_signals[] = {
 	{ "MessageAdded",   "oa{sv}" },
 	{ "MessageRemoved", "o" },
 	{ }
@@ -2342,12 +2342,12 @@ static DBusMessage *get_services(DBusConnection *conn,
 	return reply;
 }
 
-static GDBusMethodTable manager_methods[] = {
+static const GDBusMethodTable manager_methods[] = {
 	{ "GetServices", "", "a(oa{sv})", get_services },
 	{ }
 };
 
-static GDBusSignalTable manager_signals[] = {
+static const GDBusSignalTable manager_signals[] = {
 	{ "ServiceAdded",   "oa{sv}" },
 	{ "ServiceRemoved", "o"      },
 	{ }

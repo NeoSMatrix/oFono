@@ -114,7 +114,7 @@ static DBusMessage *agent_release(DBusConnection *conn,
 	return NULL;
 }
 
-static GDBusMethodTable agent_methods[] = {
+static const GDBusMethodTable agent_methods[] = {
 	{ "ReceiveNotification", "aya{sv}", "", agent_receive },
 	{ "Release",             "",        "", agent_release,
 						G_DBUS_METHOD_FLAG_NOREPLY },
