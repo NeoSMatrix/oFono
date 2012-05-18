@@ -223,13 +223,13 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 }
 
 static const GDBusMethodTable message_methods[] = {
-	{ _GDBUS_METHOD("MarkRead", "", "", NULL, NULL, msg_mark_read) },
-	{ _GDBUS_METHOD("Delete", "", "", NULL, NULL, msg_delete) },
+	{ GDBUS_METHOD("MarkRead", NULL, NULL, msg_mark_read) },
+	{ GDBUS_METHOD("Delete", NULL, NULL, msg_delete) },
 	{ }
 };
 
 static const GDBusSignalTable message_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
@@ -981,16 +981,16 @@ release_msg:
 }
 
 static const GDBusMethodTable service_methods[] = {
-	{ _GDBUS_METHOD("SendMessage", "assa(sss)", "o",
+	{ GDBUS_METHOD("SendMessage",
 			GDBUS_ARGS({ "recipients", "as" }, { "smil", "s" },
 						{ "attachments", "a(sss)" }),
 			GDBUS_ARGS({ "path", "o" }),
 			send_message) },
-	{ _GDBUS_METHOD("GetMessages", "", "a(oa{sv})",
+	{ GDBUS_METHOD("GetMessages",
 			NULL,
 			GDBUS_ARGS({ "messages_with_properties", "a(oa{sv})" }),
 			get_messages) },
-	{ _GDBUS_METHOD("GetConversation", "su", "a(oa{sv})",
+	{ GDBUS_METHOD("GetConversation",
 			GDBUS_ARGS({ "number", "s" }, { "count", "s" }),
 			GDBUS_ARGS({ "messages_with_properties", "a(oa{sv}" }),
 			get_conversation) },
@@ -998,10 +998,9 @@ static const GDBusMethodTable service_methods[] = {
 };
 
 static const GDBusSignalTable service_signals[] = {
-	{ _GDBUS_SIGNAL("MessageAdded", "oa{sv}",
-				GDBUS_ARGS({ "path", "o" },
+	{ GDBUS_SIGNAL("MessageAdded", GDBUS_ARGS({ "path", "o" },
 						{ "properties", "a{sv}" })) },
-	{ _GDBUS_SIGNAL("MessageRemoved", "o", GDBUS_ARGS({ "path", "o" })) },
+	{ GDBUS_SIGNAL("MessageRemoved", GDBUS_ARGS({ "path", "o" })) },
 	{ }
 };
 
@@ -2356,18 +2355,16 @@ static DBusMessage *get_services(DBusConnection *conn,
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ _GDBUS_METHOD("GetServices", "", "a(oa{sv})",
-			NULL,
+	{ GDBUS_METHOD("GetServices", NULL,
 			GDBUS_ARGS({ "services_with_properties", "a(oa{sv})" }),
 			get_services) },
 	{ }
 };
 
 static const GDBusSignalTable manager_signals[] = {
-	{ _GDBUS_SIGNAL("ServiceAdded", "oa{sv}",
-				GDBUS_ARGS({ "path", "o" },
+	{ GDBUS_SIGNAL("ServiceAdded", GDBUS_ARGS({ "path", "o" },
 						{ "properties", "a{sv}" })) },
-	{ _GDBUS_SIGNAL("ServiceRemoved", "o", GDBUS_ARGS({ "path", "o" })) },
+	{ GDBUS_SIGNAL("ServiceRemoved", GDBUS_ARGS({ "path", "o" })) },
 	{ }
 };
 

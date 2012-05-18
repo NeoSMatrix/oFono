@@ -115,11 +115,11 @@ static DBusMessage *agent_release(DBusConnection *conn,
 }
 
 static const GDBusMethodTable agent_methods[] = {
-	{ _GDBUS_METHOD("ReceiveNotification", "aya{sv}", "",
+	{ GDBUS_METHOD("ReceiveNotification",
 			GDBUS_ARGS({ "notification", "ay" },
 						{ "info", "a{sv}" }),
 			NULL, agent_receive) },
-	{ _GDBUS_NOREPLY_METHOD("Release", "", "", NULL, NULL, agent_release) },
+	{ GDBUS_NOREPLY_METHOD("Release", NULL, NULL, agent_release) },
 	{ }
 };
 
