@@ -223,13 +223,14 @@ static DBusMessage *msg_mark_read(DBusConnection *conn,
 }
 
 static const GDBusMethodTable message_methods[] = {
-	{ "MarkRead", "", "", msg_mark_read },
-	{ "Delete",   "", "", msg_delete },
+	{ _GDBUS_METHOD("MarkRead", "", "", NULL, NULL, msg_mark_read) },
+	{ _GDBUS_METHOD("Delete", "", "", NULL, NULL, msg_delete) },
 	{ }
 };
 
 static const GDBusSignalTable message_signals[] = {
-	{ "PropertyChanged", "sv" },
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
 
@@ -980,15 +981,27 @@ release_msg:
 }
 
 static const GDBusMethodTable service_methods[] = {
-	{ "SendMessage", "assa(sss)", "o", send_message },
-	{ "GetMessages", "", "a(oa{sv})", get_messages },
-	{ "GetConversation", "su", "a(oa{sv})", get_conversation },
+	{ _GDBUS_METHOD("SendMessage", "assa(sss)", "o",
+			GDBUS_ARGS({ "recipients", "as" }, { "smil", "s" },
+						{ "attachments", "a(sss)" }),
+			GDBUS_ARGS({ "path", "o" }),
+			send_message) },
+	{ _GDBUS_METHOD("GetMessages", "", "a(oa{sv})",
+			NULL,
+			GDBUS_ARGS({ "messages_with_properties", "a(oa{sv})" }),
+			get_messages) },
+	{ _GDBUS_METHOD("GetConversation", "su", "a(oa{sv})",
+			GDBUS_ARGS({ "number", "s" }, { "count", "s" }),
+			GDBUS_ARGS({ "messages_with_properties", "a(oa{sv}" }),
+			get_conversation) },
 	{ }
 };
 
 static const GDBusSignalTable service_signals[] = {
-	{ "MessageAdded",   "oa{sv}" },
-	{ "MessageRemoved", "o" },
+	{ _GDBUS_SIGNAL("MessageAdded", "oa{sv}",
+				GDBUS_ARGS({ "path", "o" },
+						{ "properties", "a{sv}" })) },
+	{ _GDBUS_SIGNAL("MessageRemoved", "o", GDBUS_ARGS({ "path", "o" })) },
 	{ }
 };
 
@@ -2343,13 +2356,18 @@ static DBusMessage *get_services(DBusConnection *conn,
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ "GetServices", "", "a(oa{sv})", get_services },
+	{ _GDBUS_METHOD("GetServices", "", "a(oa{sv})",
+			NULL,
+			GDBUS_ARGS({ "services_with_properties", "a(oa{sv})" }),
+			get_services) },
 	{ }
 };
 
 static const GDBusSignalTable manager_signals[] = {
-	{ "ServiceAdded",   "oa{sv}" },
-	{ "ServiceRemoved", "o"      },
+	{ _GDBUS_SIGNAL("ServiceAdded", "oa{sv}",
+				GDBUS_ARGS({ "path", "o" },
+						{ "properties", "a{sv}" })) },
+	{ _GDBUS_SIGNAL("ServiceRemoved", "o", GDBUS_ARGS({ "path", "o" })) },
 	{ }
 };
 
