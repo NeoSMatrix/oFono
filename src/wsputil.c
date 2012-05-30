@@ -490,13 +490,26 @@ gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
 	unsigned int val_len;
 	unsigned int i;
 
+	switch (wsp_header_iter_get_val_type(iter)) {
+	case WSP_VALUE_TYPE_TEXT:
+		if (out_value)
+			*out_value = pdu_val;
+
+		break;
+
 	/*
 	 * Well-known field values MUST be encoded using the
 	 * compact binary formats
 	 */
-	if (wsp_header_iter_get_val_type(iter) == WSP_VALUE_TYPE_SHORT) {
+	case WSP_VALUE_TYPE_SHORT:
 		val = *pdu_val & 0x7f;
-	} else {
+
+		if (out_value)
+			*out_value = get_text_entry(val, app_id);
+
+		break;
+
+	case WSP_VALUE_TYPE_LONG:
 		val_len = wsp_header_iter_get_val_len(iter);
 
 		if (val_len > 2)
@@ -504,10 +517,12 @@ gboolean wsp_decode_application_id(struct wsp_header_iter *iter,
 
 		for (i = 0, val = 0; i < val_len && i < sizeof(val); i++)
 			val = (val << 8) | pdu_val[i];
-	}
 
-	if (out_value)
-		*out_value = get_text_entry(val, app_id);
+		if (out_value)
+			*out_value = get_text_entry(val, app_id);
+
+		break;
+	}
 
 	return TRUE;
 }
