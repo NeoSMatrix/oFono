@@ -18,6 +18,7 @@ Meta file Example
 [info]
 read=false
 state=notification
+id=0123456789ABCDEF
 
 
 Meta file Keys/Values details
@@ -31,3 +32,38 @@ state: The message local state, possible values can be:
     - "received": m-Retrieve.Conf PDU downloaded and successfully acknowledged.
     - "draft": m-Send.Req PDU ready for sending.
     - "sent": m-Send.Req PDU successfully sent.
+
+id: this is the value provided in the M-Send.conf PDU (assigned by MMSC
+in response to a M-Send.req message), this entry will only be created upon
+M-Send.conf message reception if the delivery report was requested.
+
+For sent messages, a group [delivery_status] could take place in addition to
+[info] if delivery report is requested. It will be used to manage the received
+delivery_report sent by each recipients. This group will have an entry per
+recipient, the associated value will be set to "none" (which means no report
+has been received yet) and updated upon report reception. The stored "id"
+(provided by the MMSC in the Send.conf msg) must match the received "id" in the
+delivery.ind push msg sent by each recipients.
+
+In this group, every recipient has a MMS Delivery status value which can be one
+of the following:
+    - "none": no report has been received yet.
+    - "expired": recipient did not retrieve the MMS before expiration.
+    - "retrieved": MMS successfully retrieved by the recipient.
+    - "rejected": recipient rejected the MMS.
+    - "deferred": recipient decided to retrieve the MMS at a later time.
+    - "indeterminate": cannot determine if the MMS reached its destination.
+    - "forwarded": recipient forwarded the MMS without retrieving it first.
+    - "unreachable": recipient is not reachable.
+
+
+Example of a sent_message meta file with delivery report requested
+==================================================================
+
+[info]
+state=sent
+id=0123456789ABCDEF
+
+[delivery_status]
++33612345678=retrieved
++4915187654321=none
