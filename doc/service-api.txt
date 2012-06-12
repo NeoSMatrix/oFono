@@ -63,6 +63,26 @@ Methods		array{object,dict} GetMessages()
 				[service].Error.PermanentContentNotAccepted
 				[service].Error.PermanentLackOfPrepaid
 
+		void DeleteMessages(array{object})
+
+			Delete an array of message objects that represents
+			the currently stored messages to delete.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void DeleteConversation(string number)
+
+			Delete the messages that belongs to the conversation
+			defined by the given number.
+
+			The number parameter contains digits to look for
+			(i.e.: n last digits of the phone number), only messages
+			with a recipient which ends with the given number will
+			be member of the conversation and thus will be deleted.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+
 Signals		MessageAdded(object path, dict properties)
 
 			Signal that is sent when a new message is added. It
