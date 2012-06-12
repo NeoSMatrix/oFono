@@ -73,6 +73,11 @@ enum mms_message_sender_visibility {
 	MMS_MESSAGE_SENDER_VISIBILITY_SHOW =		129,
 };
 
+enum mms_message_value_bool {
+	MMS_MESSAGE_VALUE_BOOL_YES =			128,
+	MMS_MESSAGE_VALUE_BOOL_NO =			129,
+};
+
 enum mms_message_version {
 	MMS_MESSAGE_VERSION_1_0 =	0x90,
 	MMS_MESSAGE_VERSION_1_1 =	0x91,

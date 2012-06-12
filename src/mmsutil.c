@@ -1395,7 +1395,7 @@ static header_encoder encoder_for_type(enum mms_header header)
 	case MMS_HEADER_DATE:
 		return NULL;
 	case MMS_HEADER_DELIVERY_REPORT:
-		return NULL;
+		return encode_short;
 	case MMS_HEADER_DELIVERY_TIME:
 		return NULL;
 	case MMS_HEADER_EXPIRY:
@@ -1614,12 +1614,19 @@ static gboolean mms_encode_send_req(struct mms_message *msg,
 {
 	const char *empty_from = "";
 	GSList *item;
+	enum mms_message_value_bool dr;
+
+	if (msg->sr.dr == TRUE)
+		dr = MMS_MESSAGE_VALUE_BOOL_YES;
+	else
+		dr = MMS_MESSAGE_VALUE_BOOL_NO;
 
 	if (mms_encode_headers(fb, MMS_HEADER_MESSAGE_TYPE, &msg->type,
 				MMS_HEADER_TRANSACTION_ID, &msg->transaction_id,
 				MMS_HEADER_MMS_VERSION, &msg->version,
 				MMS_HEADER_FROM, &empty_from,
 				MMS_HEADER_TO, &msg->sr.to,
+				MMS_HEADER_DELIVERY_REPORT, &dr,
 				MMS_HEADER_CONTENT_TYPE, &msg->sr.content_type,
 				MMS_HEADER_INVALID) == FALSE)
 		return FALSE;
