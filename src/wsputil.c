@@ -1081,7 +1081,6 @@ gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
 		case WSP_PARAMETER_TYPE_CONTENT_TYPE:
 		{
 			const char *ct;
-			unsigned int consumed;
 
 			if (*pdu & 0x80) {
 				unsigned int i = *pdu & 0x7f;
