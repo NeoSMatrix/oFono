@@ -57,6 +57,9 @@
 #define MAX_ATTACHMENTS_NUMBER 25
 #define MAX_ATTEMPTS 3
 
+#define SETTINGS_STORE "mms"
+#define SETTINGS_GROUP "Settings"
+
 #define uninitialized_var(x) x = x
 
 static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
@@ -84,6 +87,8 @@ struct mms_service {
 	guint current_request_id;
 	GWeb *web;
 	GHashTable *messages;
+	GKeyFile *settings;
+	gboolean use_delivery_reports;
 };
 
 enum mms_request_type {
@@ -110,6 +115,28 @@ static GList *service_list;
 static DBusConnection *connection;
 
 static guint32 transaction_id_start = 0;
+
+static void mms_load_settings(struct mms_service *service)
+{
+	GError *error;
+
+	service->settings = mms_settings_open(service->identity,
+							SETTINGS_STORE);
+	if (service->settings == NULL)
+		return;
+
+	error = NULL;
+	service->use_delivery_reports =
+		g_key_file_get_boolean(service->settings, SETTINGS_GROUP,
+						"UseDeliveryReports", &error);
+
+	if (error) {
+		g_error_free(error);
+		g_key_file_set_boolean(service->settings, SETTINGS_GROUP,
+						"UseDeliveryReports",
+						service->use_delivery_reports);
+	}
+}
 
 static void mms_request_destroy(struct mms_request *request)
 {
@@ -903,6 +930,8 @@ static DBusMessage *send_message(DBusConnection *conn,
 
 	msg->sr.status = MMS_MESSAGE_STATUS_DRAFT;
 
+	msg->sr.dr = service->use_delivery_reports;
+
 	if (send_message_get_args(dbus_msg, msg) == FALSE) {
 		mms_debug("Invalid arguments");
 
@@ -1407,6 +1436,8 @@ int mms_service_register(struct mms_service *service)
 
 	emit_service_added(service);
 
+	mms_load_settings(service);
+
 	load_messages(service);
 
 	return 0;
@@ -1424,6 +1455,17 @@ int mms_service_unregister(struct mms_service *service)
 
 	if (service->messages != NULL)
 		destroy_message_table(service);
+
+	if (service->settings != NULL) {
+		g_key_file_set_boolean(service->settings, SETTINGS_GROUP,
+					"UseDeliveryReports",
+					service->use_delivery_reports);
+
+		mms_settings_close(service->identity, SETTINGS_STORE,
+						service->settings, TRUE);
+
+		service->settings = NULL;
+	}
 
 	if (g_dbus_unregister_interface(connection, service->path,
 					MMS_SERVICE_INTERFACE) == FALSE) {
