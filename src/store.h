@@ -28,3 +28,7 @@ char *mms_store_get_path(const char *service_id, const char *uuid);
 GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid);
 void mms_store_meta_close(const char *service_id, const char *uuid,
 					GKeyFile *keyfile, gboolean save);
+
+GKeyFile *mms_settings_open(const char *service_id, const char *store);
+void mms_settings_close(const char *service_id, const char *store,
+					GKeyFile *keyfile, gboolean save);

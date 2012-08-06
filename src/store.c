@@ -358,3 +358,59 @@ void mms_store_meta_close(const char *service_id, const char *uuid,
 
 	g_key_file_free(keyfile);
 }
+
+GKeyFile *mms_settings_open(const char *service_id, const char *store)
+{
+	GKeyFile *keyfile;
+	char *path;
+
+	if (store == NULL)
+		return NULL;
+
+	path = mms_store_get_path(service_id, store);
+	if (path == NULL)
+		return NULL;
+
+	if (create_dirs(path, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
+		mms_error("Failed to create path %s", path);
+
+		g_free(path);
+		return NULL;
+	}
+
+	keyfile = g_key_file_new();
+
+	g_key_file_load_from_file(keyfile, path, 0, NULL);
+
+	g_free(path);
+
+	return keyfile;
+}
+
+static void settings_sync(const char *service_id, const char *store,
+							GKeyFile *keyfile)
+{
+	char *path;
+	char *data;
+	gsize length = 0;
+
+	path = mms_store_get_path(service_id, store);
+	if (path == NULL)
+		return;
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(path, data, length, NULL);
+
+	g_free(data);
+	g_free(path);
+}
+
+void mms_settings_close(const char *service_id, const char *store,
+					GKeyFile *keyfile, gboolean save)
+{
+	if (save == TRUE)
+		settings_sync(service_id, store, keyfile);
+
+	g_key_file_free(keyfile);
+}
