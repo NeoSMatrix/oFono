@@ -887,6 +887,48 @@ out:
 	return reply;
 }
 
+static DBusMessage *set_property(DBusConnection *conn, DBusMessage *dbus_msg,
+								void *data)
+{
+	struct mms_service *service = data;
+	DBusMessageIter iter;
+	DBusMessageIter var;
+	const char *property;
+
+	if (!dbus_message_iter_init(dbus_msg, &iter))
+		return __mms_error_invalid_args(dbus_msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return __mms_error_invalid_args(dbus_msg);
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return __mms_error_invalid_args(dbus_msg);
+
+	dbus_message_iter_recurse(&iter, &var);
+
+	if (!strcmp(property, "UseDeliveryReports")) {
+		dbus_bool_t value;
+
+		if (dbus_message_iter_get_arg_type(&var) != DBUS_TYPE_BOOLEAN)
+			return __mms_error_invalid_args(dbus_msg);
+
+		dbus_message_iter_get_basic(&var, &value);
+
+		if (service->use_delivery_reports != (gboolean) value) {
+			DBG("use_delivery_reports = %d", value);
+
+			service->use_delivery_reports = value;
+		}
+
+		return g_dbus_create_reply(dbus_msg, DBUS_TYPE_INVALID);
+	}
+
+	return __mms_error_invalid_args(dbus_msg);
+}
+
 static gboolean mms_attachment_is_smil(const struct mms_attachment *part)
 {
 	if (g_str_has_prefix(part->content_type, "application/smil"))
@@ -1023,6 +1065,10 @@ static const GDBusMethodTable service_methods[] = {
 			GDBUS_ARGS({ "number", "s" }, { "count", "s" }),
 			GDBUS_ARGS({ "messages_with_properties", "a(oa{sv}" }),
 			get_conversation) },
+	{ GDBUS_METHOD("SetProperty",
+			GDBUS_ARGS({ "property", "s" }, { "value", "v" }),
+			NULL,
+			set_property) },
 	{ }
 };
 
