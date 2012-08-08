@@ -52,7 +52,7 @@ CLEANFILES = src/builtin.h
 
 test_scripts = test/monitor-mms test/get-services test/send-message \
 		test/delete-message test/mark-message-read test/get-messages \
-		test/get-conversation
+		test/get-conversation test/set-dr
 
 doc_files = doc/architecture.txt doc/consumer.txt doc/manager-api.txt \
 				doc/service-api.txt doc/message-api.txt \
