@@ -82,6 +82,12 @@ Methods		array{object,dict} GetMessages()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 
 Signals		MessageAdded(object path, dict properties)
 
@@ -94,3 +100,10 @@ Signals		MessageAdded(object path, dict properties)
 			Signal that is sent when a message has been removed.
 			The object path is no longer accessible after this
 			signal and only emitted for reference.
+
+Properties	boolean UseDeliveryReports
+
+			This property controls whether MMS Status Reports,
+			sometimes better known as Delivery Reports are to be
+			used.  If enabled, all outgoing MMS messages will be
+			flagged to request a status report from the MMSC.
