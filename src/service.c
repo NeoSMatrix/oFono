@@ -887,6 +887,31 @@ out:
 	return reply;
 }
 
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct mms_service *service = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	mms_dbus_dict_open(&iter, &dict);
+
+	mms_dbus_dict_append_basic(&dict, "UseDeliveryReports",
+					DBUS_TYPE_BOOLEAN,
+					&service->use_delivery_reports);
+
+	mms_dbus_dict_close(&iter, &dict);
+
+	return reply;
+}
+
 static DBusMessage *set_property(DBusConnection *conn, DBusMessage *dbus_msg,
 								void *data)
 {
@@ -1069,6 +1094,10 @@ static const GDBusMethodTable service_methods[] = {
 			GDBUS_ARGS({ "property", "s" }, { "value", "v" }),
 			NULL,
 			set_property) },
+	{ GDBUS_METHOD("GetProperties",
+			NULL,
+			GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
 	{ }
 };
 
