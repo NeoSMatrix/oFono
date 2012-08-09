@@ -36,6 +36,13 @@ Methods		array{object,dict} GetMessages()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.TransientFailure
 
+		dict GetProperties()
+
+			Returns properties for the manager object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.NotImplemented
+
 		object SendMessage(array{string} recipients, string smil,
 					array{string id, string content-type,
 							string filename})
