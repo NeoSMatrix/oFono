@@ -122,6 +122,13 @@ struct mms_notification_resp_ind {
 	enum mms_message_notify_status notify_status;
 };
 
+struct mms_delivery_ind {
+	enum mms_message_delivery_status dr_status;
+	char *msgid;
+	char *to;
+	time_t date;
+};
+
 struct mms_attachment {
 	unsigned char *data;
 	size_t offset;
@@ -143,6 +150,7 @@ struct mms_message {
 		struct mms_send_req sr;
 		struct mms_send_conf sc;
 		struct mms_notification_resp_ind nri;
+		struct mms_delivery_ind di;
 	};
 };
 
