@@ -629,7 +629,7 @@ static gboolean result_request_send_conf(struct mms_request *request)
 
 	uuid = request->msg->uuid;
 
-	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity,	uuid);
+	path = g_strdup_printf("%s/%s/%s", MMS_PATH, service->identity, uuid);
 
 	if (request->status != 200)
 		goto error;
@@ -655,17 +655,21 @@ static gboolean result_request_send_conf(struct mms_request *request)
 
 	mms_debug("response status : %d", msg->sc.rsp_status);
 
-	mms_message_free(msg);
-
 	munmap(pdu, len);
 
 	unlink(request->data_path);
 
 	meta = mms_store_meta_open(service->identity, uuid);
-	if (meta == NULL)
+	if (meta == NULL) {
+		mms_message_free(msg);
+
 		goto error;
+	}
 
 	g_key_file_set_string(meta, "info", "state", "sent");
+	g_key_file_set_string(meta, "info", "id", msg->sc.msgid);
+
+	mms_message_free(msg);
 
 	mms_store_meta_close(service->identity, uuid, meta, TRUE);
 
