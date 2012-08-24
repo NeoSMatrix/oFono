@@ -2325,6 +2325,21 @@ static void process_request_queue(struct mms_service *service)
 						bearer_idle_timeout, service);
 }
 
+static void dump_delivery_ind(struct mms_message *msg)
+{
+	char buf[128];
+
+	strftime(buf, 127, "%Y-%m-%dT%H:%M:%S%z", localtime(&msg->di.date));
+	buf[127] = '\0';
+
+	mms_info("MMS version: %u.%u\n", (msg->version & 0x70) >> 4,
+						msg->version & 0x0f);
+	mms_info("Msg ID: %s\n", msg->di.msgid);
+	mms_info("To: %s\n", msg->di.to);
+	mms_info("Date: %s\n", buf);
+	mms_info("Delivery Report status: %d\n", msg->di.dr_status);
+}
+
 static void dump_notification_ind(struct mms_message *msg)
 {
 	char buf[128];
@@ -2369,6 +2384,22 @@ void mms_service_push_notify(struct mms_service *service,
 
 	if (mms_message_decode(data + nread, len - nread, msg) == FALSE)
 		goto error;
+
+	if (msg->type == MMS_MESSAGE_TYPE_DELIVERY_IND) {
+		msg->uuid = g_strdup(uuid);
+
+		dump_delivery_ind(msg);
+
+		meta = mms_store_meta_open(service->identity, uuid);
+		if (meta == NULL)
+			goto error;
+
+		g_key_file_set_string(meta, "info", "state", "notification");
+
+		mms_store_meta_close(service->identity, uuid, meta, TRUE);
+
+		return;
+	}
 
 	if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
 		goto error;
