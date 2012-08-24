@@ -42,8 +42,6 @@
 #define TFR
 #endif
 
-#define MMS_SHA1_UUID_LEN 20
-
 static const char *digest_to_str(const unsigned char *digest)
 {
 	static char buf[MMS_SHA1_UUID_LEN * 2 + 1];
@@ -293,7 +291,7 @@ void mms_store_remove(const char *service_id, const char *uuid)
 
 	unlink(pdu_path);
 
-	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, MMS_META_UUID_SUFFIX);
 
 	g_free(pdu_path);
 
@@ -312,7 +310,7 @@ GKeyFile *mms_store_meta_open(const char *service_id, const char *uuid)
 	if (pdu_path == NULL)
 		return NULL;
 
-	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, MMS_META_UUID_SUFFIX);
 
 	g_free(pdu_path);
 
@@ -337,7 +335,7 @@ static void meta_store_sync(const char *service_id, const char *uuid,
 	if (pdu_path == NULL)
 		return;
 
-	meta_path = g_strdup_printf("%s%s", pdu_path, ".status");
+	meta_path = g_strdup_printf("%s%s", pdu_path, MMS_META_UUID_SUFFIX);
 
 	g_free(pdu_path);
 

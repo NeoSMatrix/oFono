@@ -19,6 +19,11 @@
  *
  */
 
+#define MMS_SHA1_UUID_LEN 20
+#define MMS_META_UUID_SUFFIX ".status"
+#define MMS_META_UUID_SUFFIX_LEN 7
+#define MMS_META_UUID_LEN (MMS_SHA1_UUID_LEN * 2)
+
 const char *mms_store(const char *service_id, unsigned char *pdu,
 							unsigned int len);
 const char *mms_store_file(const char *service_id, const char *path);
