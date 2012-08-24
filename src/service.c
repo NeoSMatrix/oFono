@@ -69,6 +69,17 @@ static const char *ctl_chars = "\x01\x02\x03\x04\x05\x06\x07\x08\x0A"
 
 static const char *sep_chars = "()<>@,;:\\\"/[]?={} \t";
 
+static const char *delivery_status[] = {
+	"none",
+	"expired",
+	"retrieved",
+	"rejected",
+	"deferred",
+	"indeterminate",
+	"forwarded",
+	"unreachable"
+};
+
 struct mms_request;
 
 typedef gboolean (*mms_request_result_cb_t) (struct mms_request *request);
@@ -1057,6 +1068,28 @@ static DBusMessage *send_message(DBusConnection *conn,
 		goto release_request;
 
 	g_key_file_set_string(meta, "info", "state", "draft");
+
+	if (service->use_delivery_reports) {
+		char **tos;
+		int i;
+
+		tos = g_strsplit(msg->sr.to, ",", 0);
+
+		for (i = 0; tos[i] != NULL; i++) {
+			char *to = g_strdup(tos[i]);
+
+			mms_address_to_string(to);
+
+			DBG("%s=%s", to, delivery_status[0]);
+
+			g_key_file_set_string(meta, "delivery_status", to,
+							delivery_status[0]);
+
+			g_free(to);
+		}
+
+		g_strfreev(tos);
+	}
 
 	mms_store_meta_close(service->identity, msg->uuid, meta, TRUE);
 
