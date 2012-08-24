@@ -1357,7 +1357,8 @@ static gboolean load_message_from_store(const char *service_id,
 	else if (strcmp(state, "draft") == 0
 			&& msg->type == MMS_MESSAGE_TYPE_SEND_REQ)
 		msg->sr.status = MMS_MESSAGE_STATUS_DRAFT;
-	else if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND)
+	else if (msg->type != MMS_MESSAGE_TYPE_NOTIFICATION_IND &&
+			msg->type != MMS_MESSAGE_TYPE_DELIVERY_IND)
 		goto out;
 
 	success = TRUE;
@@ -1482,6 +1483,8 @@ register_sr:
 			request = NULL;
 			mms_message_register(service, msg);
 		}
+	} else if (msg->type == MMS_MESSAGE_TYPE_DELIVERY_IND) {
+		request = NULL;
 	} else
 		request = NULL;
 
