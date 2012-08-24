@@ -354,6 +354,19 @@ static gboolean mmap_file(const char *path, void **out_pdu, size_t *out_len)
 	return TRUE;
 }
 
+static const char *mms_address_to_string(char *mms_address)
+{
+	unsigned int prefix_len;
+
+	if (g_str_has_suffix(mms_address, "/TYPE=PLMN") == TRUE) {
+		prefix_len = strlen(mms_address) - 10;
+
+		mms_address[prefix_len] = '\0';
+	}
+
+	return (const char *) mms_address;
+}
+
 static gboolean send_message_get_recipients(DBusMessageIter *top_iter,
 						struct mms_message *msg)
 {
@@ -1700,19 +1713,6 @@ static void append_msg_attachments(DBusMessageIter *dict, const char *path,
 	case MMS_MESSAGE_TYPE_DELIVERY_IND:
 		return;
 	}
-}
-
-static const char *mms_address_to_string(char *mms_address)
-{
-	unsigned int prefix_len;
-
-	if (g_str_has_suffix(mms_address, "/TYPE=PLMN") == TRUE) {
-		prefix_len = strlen(mms_address) - 10;
-
-		mms_address[prefix_len] = '\0';
-	}
-
-	return (const char *) mms_address;
 }
 
 static void append_msg_recipients(DBusMessageIter *dict,
