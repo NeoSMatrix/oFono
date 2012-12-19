@@ -2,7 +2,7 @@
 AM_MAKEFLAGS = --no-print-directory
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
-					gdbus/object.c gdbus/polkit.c
+				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
 gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/gionotls.c
