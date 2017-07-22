@@ -941,7 +941,9 @@ gboolean wsp_parameter_iter_next(struct wsp_parameter_iter *pi,
 				return TRUE;
 			}
 
-			/* Fall through to the string case */
+			/* Continue to the string case */
+
+			/* fall through */
 		case WSP_PARAMETER_TYPE_NAME_DEFUNCT:
 		case WSP_PARAMETER_TYPE_FILENAME_DEFUNCT:
 		case WSP_PARAMETER_TYPE_START_DEFUNCT:
