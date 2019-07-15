@@ -60,6 +60,7 @@ struct modem_data {
 	char *context_interface;
 	char *context_proxy;
 	char *imei;
+	char *imei_sv;
 };
 
 static GHashTable *modem_list;
@@ -163,6 +164,7 @@ static void remove_modem(gpointer data)
 	g_free(modem->sim_identity);
 
 	g_free(modem->imei);
+	g_free(modem->imei_sv);
 
 	g_free(modem->path);
 	g_free(modem);
@@ -1074,6 +1076,13 @@ static gboolean modem_changed(DBusConnection *connection,
 		dbus_message_iter_get_basic(&value, &serial);
 		modem->imei = g_strdup(serial);
 		DBG("IMEI: %s", modem->imei);
+	}
+
+	if (g_str_equal(key, "SoftwareVersionNumber")) {
+		char *serial;
+		dbus_message_iter_get_basic(&value, &serial);
+		modem->imei_sv = g_strdup(serial);
+		DBG("IMEI_SV: %s", modem->imei_sv);
 	}
 
 	return TRUE;
