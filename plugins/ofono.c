@@ -59,6 +59,7 @@ struct modem_data {
 	dbus_bool_t context_active;
 	char *context_interface;
 	char *context_proxy;
+	char *imei;
 };
 
 static GHashTable *modem_list;
@@ -160,6 +161,8 @@ static void remove_modem(gpointer data)
 	g_free(modem->context_proxy);
 
 	g_free(modem->sim_identity);
+
+	g_free(modem->imei);
 
 	g_free(modem->path);
 	g_free(modem);
@@ -1065,6 +1068,13 @@ static gboolean modem_changed(DBusConnection *connection,
 
 	if (g_str_equal(key, "Interfaces") == TRUE)
 		check_interfaces(modem, &value);
+
+	if (g_str_equal(key, "Serial")) {
+		char *serial;
+		dbus_message_iter_get_basic(&value, &serial);
+		modem->imei = g_strdup(serial);
+		DBG("IMEI: %s", modem->imei);
+	}
 
 	return TRUE;
 }
